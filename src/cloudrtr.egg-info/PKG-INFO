@@ -1,0 +1,23 @@
+Metadata-Version: 2.1
+Name: cloudrtr
+Version: 0.0.2
+Summary: System of Systems Multi-Agent Architecture
+Home-page: https://github.com/amertzani/rsos2.git
+Download-URL: https://github.com/amertzani/rsos2/archive/refs/tags/rsos2.tar.gz
+Author: SMERTZANI
+Author-email: mertzanisemina@gmail.com
+License: MIT
+Keywords: Multi-agent,Reinforcement Learning
+Platform: UNKNOWN
+Classifier: Development Status :: 3 - Alpha
+Classifier: Intended Audience :: Developers
+Classifier: Topic :: Software Development :: Build Tools
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.4
+Classifier: Programming Language :: Python :: 3.5
+Classifier: Programming Language :: Python :: 3.6
+License-File: LICENSE.txt
+
+UNKNOWN
+

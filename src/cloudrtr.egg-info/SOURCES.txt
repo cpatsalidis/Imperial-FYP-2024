@@ -1,0 +1,9 @@
+LICENSE.txt
+README.md
+setup.cfg
+setup.py
+src/cloudrtr.egg-info/PKG-INFO
+src/cloudrtr.egg-info/SOURCES.txt
+src/cloudrtr.egg-info/dependency_links.txt
+src/cloudrtr.egg-info/requires.txt
+src/cloudrtr.egg-info/top_level.txt
