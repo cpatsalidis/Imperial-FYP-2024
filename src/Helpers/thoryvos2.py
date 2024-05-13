@@ -8,15 +8,18 @@ import random
 import statistics
 import math 
 
+# Update the state of the environment with the jobs, urgency and selection status of each agent
 def state_update_dyn(state,model):
-  for agent,th in model.allJobs.items():
+  for agent,th in model.allJobs.items(): # Update state with the jobs of each agent
     state[agent][0] = th
-  for agent,urg in model.allUrg.items():
+  for agent,urg in model.allUrg.items(): # Update state with the urgency of each agent
     state[agent][1] = urg
-  for agent,n in model.vectorIn.items():
+  for agent,n in model.vectorIn.items(): # Update state with the selection status of each agents' job (0 or 1)
     state[agent][2] = n
   return state
 
+
+# Update the number of agents to be active in the next iteration based on the original Baseline parameter 
 def action_update(action,model):
   myaction = 'rl'
   if model.baseline == 0:
@@ -24,24 +27,27 @@ def action_update(action,model):
   elif model.baseline == -1:
     myaction = 'same'
   if myaction == 'random':
-    model.NagentsIn = random.randint(1,model.n_agents)
+    model.NagentsIn = random.randint(1,model.n_agents) # Randomly select the number of agents to be active in the next iteration
   elif myaction == 'same':
-    model.NagentsIn = model.NagentsIn
+    model.NagentsIn = model.NagentsIn # Keep the number of agents the same as the previous iteration
   else: 
-    model.NagentsIn = action
-  if model.NagentsIn == 0:
+    model.NagentsIn = action # Use the action from the RL model
+
+  # Ensure that the number of agents is not 0
+  if model.NagentsIn == 0: 
     model.NagentsIn = 1
   # model.NagentsIn = min(model.rounds,99)
   return 
 
+# Reset the model to its initial state
 def reset_mamodel(self):
   self.G = ih.klemm_eguilez_network(self.n_agents,self.m,self.miu) 
   # self.rounds = 0
-  procC.init_trust(self)
-  self.allJobs = {}
-  self.allPrios = {}
-  self.allUrg = {}
-  self.allimPat = {}
+  procC.init_trust(self) # initialise trust to neighbours, noise and self-confidence
+  self.allJobs = {} # dictionary of jobs for each agent
+  self.allPrios = {} # dictionary of priorities for each agent
+  self.allUrg = {} # dictionary of urgencies for each agent
+  self.allimPat = {} 
   self.allDelay = {}
   self.allOrder = {}
   self.allsumOrder = {}
@@ -85,12 +91,12 @@ def reset_mamodel(self):
   self.agentsIn = []
   self.jobsIn = {}
  
-#main look of the game, generates jobs of agents, calls all the functions related to the voices, 
+# Main look of the game, generates jobs of agents, calls all the functions related to the voices, 
 # selects the voice based on the experimental parameters, forms collective expression,
 # calls the functions for the updates of the attention of each agent to the voices and stores the
 # variables for next iteration and visualisations
 def workDynB(state,model,action):
-  model.schedule.step()
+  model.schedule.step() # Activates the agent and stages any necessary changes, but does not apply them yet
   action_update(action,model)
   model.iNprev = model.iN
   procC.initialiseRound(model)

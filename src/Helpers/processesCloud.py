@@ -5,145 +5,168 @@ import src.Helpers.updates as up
 import statistics
 import numpy as np
 
-#initialise credence to neighbours (helper function)
+# This function initializes a dictionary of trust values for a list of neighboring nodes.
+# Each node is assigned an initial trust value of 0.5.
 def initialise_trust(node_list):
     init_trust = {}
+    # Set initial trust value for each node in the list to 0.5
     for i in node_list:
       init_trust[i] = 0.5    
     return init_trust
   
-#initialise credence to neighbours
+# This method sets up initial trust and confidence values for each agent in the simulation.
 def init_trust(self):
   for agent in self.schedule.agents:
-    agent.oneneighbors,agent.neighbors = ih.find_neighbors(agent)
-    agent.trust =  initialise_trust(agent.oneneighbors) 
+    agent.oneneighbors,agent.neighbors = ih.find_neighbors(agent) # Find and assign the first/6th-degree neighbors of the agent
+    agent.trust =  initialise_trust(agent.oneneighbors) # Initialize trust for the agent's one-degree neighbors (0.5 for all)
+
+    # Set initial trust towards noise and self-confidence (0.5 for all)
     agent.trustNoise = 0.5
     agent.selfconfidence = 0.5
 
-#initialise network properties in every round ()
+# Initialise network properties in every round ()
 def initialiseRound(self):
   # self.rounds += 1
   self.activeAgents = []
   for agent in self.schedule.agents:
-    self.activeAgents.append(agent.unique_id)
-    self.allRoundsAlive[agent.unique_id] = self.allRoundsAlive.get(agent.unique_id,0) + 1 
-    agent.oneneighbors,agent.neighbors = ih.find_neighbors(agent)
-    agent.trust =  up.add_trust(agent) 
+    self.activeAgents.append(agent.unique_id) # Append each agent's unique identifier to the activeAgents list
 
-# generate jobs randomly with size from given range
+    # Update the count of rounds each agent has been alive
+    self.allRoundsAlive[agent.unique_id] = self.allRoundsAlive.get(agent.unique_id,0) + 1 
+    agent.oneneighbors,agent.neighbors = ih.find_neighbors(agent) # Find and assign the first/6th-degree neighbors of the agent
+    agent.trust = up.add_trust(agent) 
+
+# Generate jobs randomly with size from given range 
 def genJobs(self):
   self.allJobs = {}
   self.allPrios = {}
   self.allUrg = {}
-  for agent in self.schedule.agents:
-    agent.jobSize = random.choice([1,agent.averagedemand-1,agent.averagedemand,agent.averagedemand+1])
-    agent.jobPriority = random.choice([0,agent.averagepriority-1,agent.averagepriority,agent.averagepriority+1])
-    agent.jobUrgency = random.randint(0,self.maxJobSize)
-    agent.totalJobS = agent.totalJobS + agent.jobSize
-    agent.totalJobP = agent.totalJobP + agent.jobPriority
-    self.allJobs[agent.unique_id] = agent.jobSize
-    self.allPrios[agent.unique_id] = agent.jobPriority
-    self.allUrg[agent.unique_id] = agent.jobUrgency
-  self.jobsize = sum(self.allJobs.values())
+  for agent in self.schedule.agents: 
+    agent.jobSize = random.choice([1,agent.averagedemand-1,agent.averagedemand,agent.averagedemand+1]) # Set agent job size around average demand
+    agent.jobPriority = random.choice([0,agent.averagepriority-1,agent.averagepriority,agent.averagepriority+1]) # Set agent job priority around average priority
+    agent.jobUrgency = random.randint(0,self.maxJobSize) # Set agent job urgency to a random value between 0 and maxJobSize
+    agent.totalJobS = agent.totalJobS + agent.jobSize # Update total job size for the agent
+    agent.totalJobP = agent.totalJobP + agent.jobPriority # Update total job priority for the agent
+    self.allJobs[agent.unique_id] = agent.jobSize # Add agent job size to a dictionary that holds all agent job sizes
+    self.allPrios[agent.unique_id] = agent.jobPriority # Add agent job priority to a dictionary that holds all agent job priorities
+    self.allUrg[agent.unique_id] = agent.jobUrgency # Add agent job urgency to a dictionary that holds all agent job urgencies
+  self.jobsize = sum(self.allJobs.values()) # Calculate total job size for all agents
 
-# order jobs based on urgency + size
+# Order jobs based on size (ascending) and urgency (descending) 
+# and select the smallest urgent jobs based on the number of agents to be included
 def orderNchooseJobs(self): #returns updated the jobsIn
-  jobsIncr = dict(sorted(self.allJobs.items(), key=lambda item: item[1],reverse=False))
+  jobsIncr = dict(sorted(self.allJobs.items(), key=lambda item: item[1],reverse=False)) # Sort jobs in ascending order of size
   for ag, js in jobsIncr.items():
-    jobsIncr[ag] = self.allUrg.get(ag,0)
-  urgord = dict(sorted(jobsIncr.items(), key=lambda item: item[1],reverse=True))
-  smallurg = {}
-  for agent in urgord.keys():
-    smallurg[agent] = self.allJobs.get(agent,0)
-  self.allJobs = smallurg.copy()
-  n = int(self.NagentsIn)
+    jobsIncr[ag] = self.allUrg.get(ag,0) # Update job size to urgency
+  urgord = dict(sorted(jobsIncr.items(), key=lambda item: item[1],reverse=True)) # Sort jobs in descending order of urgency
+  smallurg = {} # Dictionary to hold the smallest urgent jobs
+  for agent in urgord.keys(): 
+    smallurg[agent] = self.allJobs.get(agent,0) # Add agent to dictionary of smallest urgent jobs
+  self.allJobs = smallurg.copy() # Update allJobs with the smallest urgent jobs
+  n = int(self.NagentsIn) # Number of agents to be included in the jobsIn list
   self.jobsIn = {}
-  for ag, job in smallurg.items():
-    if (n>0):
-      self.jobsIn[ag] = job
+  for ag, job in smallurg.items(): 
+    # Add agents to jobsIn list based on the number of agents to be included
+    if (n>0): 
+      self.jobsIn[ag] = job 
       n = n -1
-  self.agentsIn = list(self.jobsIn.keys())
+  self.agentsIn = list(self.jobsIn.keys()) # List of agents included in the jobsIn list
 
-#process jobs based on decided order (smallest first, urgent first etc.)
+# Process jobs based on decided order (smallest first, urgent first etc.)
 def processJobsOrder(self):
-  self.iQoS = {}
-  self.iTCO = {}
-  self.vectorIn = {}
-  totalCompute = 0
-  totalDelay = 0
-  totalNumJobs = 0 
-  self.maxiQoS = {}
-  tcextra = 0
-  for ag,js in self.allJobs.items():
-    if ag not in self.agentsIn:
+  self.iQoS = {} # Individual quality of service
+  self.iTCO = {} # Individual total cost
+  self.vectorIn = {} # Satus of each agent (included or not)
+  totalCompute = 0 # Total compute time
+  totalDelay = 0 # Total delay
+  totalNumJobs = 0 # Total number of jobs
+  self.maxiQoS = {} # Maximum individual quality of service
+  tcextra = 0 # Extra compute time
+  
+  # Iterate through all jobs
+  for ag,js in self.allJobs.items(): 
+    # For agents NOT included in the list of agents to process jobs
+    if ag not in self.agentsIn: 
       self.vectorIn[ag] = 0
       self.iQoS[ag] = 0
       self.iTCO[ag] = 0
-      tcextra += js
-      self.maxiQoS[ag] = tcextra
+      tcextra += js 
+      self.maxiQoS[ag] = tcextra 
+    # For agents included in the list of agents to process jobs
     else: 
-      self.vectorIn[ag] = 1
+      self.vectorIn[ag] = 1 # Set status of agent to included
       totalCompute += js
       tcextra += js 
       self.maxiQoS[ag] = tcextra
       self.iQoS[ag] = totalCompute
-      totalDelay = totalDelay + totalCompute
-      totalNumJobs += 1
-  #reconsider TQoS, TCO denominator 
-  self.QoS = sum(self.iQoS.values())/max(1,self.NagentsIn)
-  self.TCO = totalCompute + self.fixedcost
-  for agent in self.activeAgents:
+      totalDelay = totalDelay + totalCompute # Update total delay
+      totalNumJobs += 1 # Update total number of jobs
+
+  # reconsider TQoS, TCO denominator 
+  self.QoS = sum(self.iQoS.values())/max(1,self.NagentsIn) # Average quality of service
+  self.TCO = totalCompute + self.fixedcost # Total cost of operation
+  # Update iindividual cost for each agent
+  for agent in self.activeAgents: 
     if agent in self.agentsIn:
       self.iTCO[agent] = self.TCO/max(1,self.NagentsIn)
-    self.miniTCO[agent] = (tcextra + self.fixedcost)/max(1,len(self.activeAgents))
+    self.miniTCO[agent] = (tcextra + self.fixedcost)/max(1,len(self.activeAgents)) # Minimum individual cost, irrespective of inclusion
     
-# generate individual noise based on quality of service (delay) and cost 
+# Generate individual noise and Expert noise based on quality of service (delay) and cost 
 def iNSr(self):
-  self.iN = {}
-  urgin = 0
+  self.iN = {} # Individual noise
+  urgin = 0 
   urgout = 0
   urgall = 0 
-  self.outavgNoise = 0
-  self.inavgNoise = 0
+  self.outavgNoise = 0 # Average noise for agents NOT included in the list of agents to process jobs
+  self.inavgNoise = 0 # Average noise for agents included in the list of agents to process jobs
+
+  # Calculate total, in, and out urgency
   for ag, urg in self.allUrg.items():
     urgall += urg
     if ag in self.agentsIn:
       urgin += urg
     else: 
       urgout += urg 
-  urgi = ((urgin-urgout)/urgall)
-  avgU = urgall/max(1,len(self.activeAgents))
-  avgQ = sum(self.iQoS.values())/max(1,self.NagentsIn)
-  avgC = self.TCO/max(1,self.NagentsIn)
-  maxQ = sum(self.maxiQoS.values())/max(1,len(self.activeAgents))
-  self.expNoise = - (maxQ-avgQ)/avgC
+  urgi = ((urgin-urgout)/urgall) # Urgency index
+  avgU = urgall/max(1,len(self.activeAgents)) # Average urgency
+  avgQ = sum(self.iQoS.values())/max(1,self.NagentsIn) # Average quality of service
+  avgC = self.TCO/max(1,self.NagentsIn) # Average total cost of operation
+  maxQ = sum(self.maxiQoS.values())/max(1,len(self.activeAgents)) # Maximum individual quality of service
+
+  # Calculate Expert Noise
+  self.expNoise = - (maxQ-avgQ)/avgC 
   self.expNoiseUrg = (self.expNoise - urgi*10)/10
+
   for agent in self.schedule.agents: 
     if agent.unique_id in self.expertsIn:
-      Si = self.expNoiseUrg
+      Si = self.expNoiseUrg # Expert agents' individual noise is set to the expert noise
     else: 
-      U = self.allUrg.get(agent.unique_id,0)
+      U = self.allUrg.get(agent.unique_id,0) # Get urgency of agent
       if agent.unique_id not in self.agentsIn:
-        Si = (U/max(1,avgU))
-        self.outavgNoise = Si + self.outavgNoise
+        Si = (U/max(1,avgU)) # Set individual noise for agents NOT included in the list of agents to process jobs
+        self.outavgNoise = Si + self.outavgNoise # Update average noise for agents NOT included in the list of agents to process jobs
       else: 
-        Q = self.iQoS.get(agent.unique_id,0)
-        C = self.iTCO.get(agent.unique_id,0)
-        noise = - (maxQ-Q)/C - (U/max(1,avgU))*10
+        Q = self.iQoS.get(agent.unique_id,0) # Get individual quality of service
+        C = self.iTCO.get(agent.unique_id,0) # Get individual cost of operation
+        noise = - (maxQ-Q)/C - (U/max(1,avgU))*10 # Calculate individual noise for agents included in the list of agents to process jobs
         Si = noise/10#noise+self.expNoiseUrg)/2
-        self.inavgNoise = Si + self.inavgNoise
-    agent.iN = Si #(-1+2/(1+math.exp(-(Si))))  
-    agent.longiN = agent.longiN+agent.iN
+        self.inavgNoise = Si + self.inavgNoise # Update average noise for agents included in the list of agents to process jobs
+
+    # agent.longiN = agent.longiN+agent.iN
+    # Set Individual and Expert noise for each agent
+    agent.iN = Si #(-1+2/(1+math.exp(-(Si))))   
     agent.xN = self.expNoiseUrg
     self.iN[agent.unique_id] = agent.iN
     self.xN[agent.unique_id] = self.expNoiseUrg
+
+    # NOT USED
     self.longiN[agent.unique_id] = agent.longiN/max(1,self.rounds)
   self.inavgNoise =  self.inavgNoise/max(1,self.NagentsIn)
   self.outavgNoise = self.outavgNoise/max(1,len(self.activeAgents)-self.NagentsIn)
   # print(self.NagentsIn,max(self.iN.values()),self.expNoiseUrg,min(self.iN.values()))         
 
 # generate individual noise based on quality of service (delay) and cost 
-def iNoiseTest(self):
+""" def iNoiseTest(self):
   self.iN = {}
   self.expNoise = ((self.n_agents*self.maxJobSize)/2)/((self.n_agents*self.maxJobSize/2) + self.fixedcost)-self.NagentsIn*self.maxJobSize/(self.NagentsIn*self.maxJobSize + self.fixedcost)
   for agent in self.schedule.agents: 
@@ -159,47 +182,56 @@ def iNoiseTest(self):
         Si = noise
     agent.iN = Si #(-1+2/(1+math.exp(-(Si))))  
     agent.xN = self.expNoise
-    self.iN[agent.unique_id] = agent.iN
+    self.iN[agent.unique_id] = agent.iN """
 
-# listen to network noise (foreground noise)
+# Foreground noise - Which agent to ask for opinion, FROM NEIGHBOURS (their individual noise, iN)
 def netNoise(self):
-  self.inN = {}
+  self.inN = {} # neighbour noise
   for agent in self.schedule.agents: 
     # rand = random.randint(0,1)
+    # If the agent has no neighbors, randomly select an agent to ask for opinion
     if agent.oneneighbors == []: 
       agentchosen = random.choice(self.activeAgents)
       self.inN[agent.unique_id] = self.iN.get(agentchosen,0)
-      agent.last_asked = agentchosen
+      agent.last_asked = agentchosen # Set the last agent asked for opinion to the randomly selected agent
+    # If the agent has neighbors, select an agent to ask for opinion based on trust values
     else:
-      flag = 0
-      agent.trust =  {k: v for k, v in sorted(agent.trust.items(), key=lambda item: item[1], reverse=True)}
+      flag = 0 # A flag to indicate if a suitable agent has been found
+      agent.trust =  {k: v for k, v in sorted(agent.trust.items(), key=lambda item: item[1], reverse=True)} # Sort the agent's trust dictionary by trust values in descending order
       trust_internal = agent.trust.copy()
-      max_value = max(agent.trust.values())
-      max_keys = [k for k, v in agent.trust.items() if v == max_value] # getting all keys containing the `maximum`
+      max_value = max(agent.trust.values()) # Find the maximum trust value
+      max_keys = [k for k, v in agent.trust.items() if v == max_value] # Find all agents with the maximum trust value
+
+      # Check if multiple agents have the highest trust value
       if (type(max_keys) == list):
         l = len(max_keys)
         for i in range(0,l):
           if flag == 0:
+            # Choose a random agent from those with highest trust, and remove him
             key = random.choice(max_keys)
             max_keys.remove(key)
             trust_internal.pop(key)
-            p = random.uniform(0, 1)
+            p = random.uniform(0, 1) # Generate a random probability
+            # If random probability > 0.5 and the chosen agent has non-zero individual noise and is a neighbor, ask for opinion
             if (p > 0.5 and self.iN.get(key,0) !=0 and key in agent.oneneighbors):
               self.inN[agent.unique_id] = self.iN.get(key,0)
-              agent.last_asked = key
-              self.timesasked[key] = self.timesasked.get(key,0) + 1
-              flag = 1
-        #you did not find it in max -> look for it in the rest
+              agent.last_asked = key # Set the last agent asked for opinion to the chosen agent
+              self.timesasked[key] = self.timesasked.get(key,0) + 1 # Increment the number of times the chosen agent has been asked for opinion
+              flag = 1 # Indicate a suitable agent has been found
+
+        # If no suitable agent is found in those with maximum trust, search among the rest
         if flag == 0:
           for key, value in trust_internal.items():
             p = random.uniform(0, 1)
+            # Similar conditions as above, checking remaining agents
             if (p > 0.5 and flag == 0):
               if (key in agent.oneneighbors and self.iN.get(key,0)!=0):
                 self.inN[agent.unique_id] = self.iN.get(key,0)
                 agent.last_asked = key
                 self.timesasked[key] = self.timesasked.get(key,0) + 1
                 #if not evaluated yet
-      #iterate over agents and randomly select whom to ask in the order of trust
+
+      # If nothing else, iterate over agents and randomly select whom to ask in the order of trust
       else:
         for key, value in agent.trust.items():
           if flag == 0:
@@ -210,47 +242,58 @@ def netNoise(self):
                 agent.last_asked = key
                 self.timesasked[key] = self.timesasked.get(key,0) + 1
                 flag = 1
-      agent.inN = self.inN.get(agent.unique_id,0)
 
-# listen to background noise     
+      agent.inN = self.inN.get(agent.unique_id,0) # Set the agent's foreground noise to the selected agent's individual noise
+
+# Background Noise - Which agent to ask for opinion, FROM ALL AGENTS (their individual noise, iN)    
 def backNoise(self): 
-  self.intN = {}
+  self.intN = {} # Background noise
   for agent in self.schedule.agents:
-    randomsample = random.choices(self.activeAgents,k=math.ceil(len(self.activeAgents)/5))
-    anoise = {}
+    randomsample = random.choices(self.activeAgents,k=math.ceil(len(self.activeAgents)/5)) # Randomly sample a number of agents (5)
+    anoise = {} 
     for agent2 in randomsample:
-      anoise[agent2] = self.iN.get(agent2,0)
-    avg = sum(anoise.values())/max(1,len(randomsample))
+      anoise[agent2] = self.iN.get(agent2,0) # Get individual noise of the randomly sampled agents
+    avg = sum(anoise.values())/max(1,len(randomsample)) # Calculate the average individual noise of the randomly sampled agents
     agent.intN = avg
-    self.intN[agent.unique_id] = agent.intN
+    self.intN[agent.unique_id] = agent.intN # Set the agent's background noise to the average individual noise of the randomly sampled agents
 
-# based on value of attention, select which voice to pay attention to
+# Define a function to determine which noise source an agent should pay attention to based on different trust levels.
 def attendNoiseFBIEandR(self):
   self.fN = {}
-  self.allnoiseselection = {}
+  self.allnoiseselection = {} # Track the type of noise each agent selects
+
   for agent in self.schedule.agents:
+    # Retrieve trust values for different sources of noise
     fore = agent.trustFN
     back = agent.trustNoise
     own = agent.selfconfidence
     exp = agent.trustExp
+
     p = random.uniform(0,1)
+    # If the probability is greater than 0.3, choose the noise based on maximum trust value
     if p > 0.3: 
+      # Attend to Expert noise
       if max(fore,back,own,exp) == exp:
         self.fN[agent.unique_id] = self.expNoiseUrg
         self.allnoiseselection[agent.unique_id] = 2
         agent.Ns = 2
+      # Attend to Foreground noise
       elif max(fore,back,own,exp) == fore:
         self.fN[agent.unique_id] = self.inN.get(agent.unique_id,0)
         self.allnoiseselection[agent.unique_id] = 1
         agent.Ns = 1
+      # Attend to Background noise
       elif max(fore,back,own,exp) == back:
         self.fN[agent.unique_id] = self.intN.get(agent.unique_id,0)
         self.allnoiseselection[agent.unique_id] = -1
         agent.Ns = -1
+      # Attend to Individual noise
       else: 
         self.fN[agent.unique_id] = self.iN.get(agent.unique_id,0)
         self.allnoiseselection[agent.unique_id] = 0
         agent.Ns = 0
+
+    # If the random number is below or equal to 0.3, randomly attend to a noise
     else:
       choose = random.choice(['f','b','i','x'])
       if choose == 'x':
@@ -269,10 +312,12 @@ def attendNoiseFBIEandR(self):
         self.fN[agent.unique_id] = self.iN.get(agent.unique_id,0)
         self.allnoiseselection[agent.unique_id] = 0    
         agent.Ns = 0  
-    agent.fN = self.fN.get(agent.unique_id,0)
+    agent.fN = self.fN.get(agent.unique_id,0) # Set the agent's current noise to the selected noise attention
     self.allCumNoise[agent.unique_id] = self.allCumNoise.get(agent.unique_id,0) + self.fN.get(agent.unique_id,0)
     self.allavgNoise[agent.unique_id] = self.allCumNoise.get(agent.unique_id,0)/max(1,self.allRoundsAlive.get(agent.unique_id,0))
     # print(self.allnoiseselection[agent.unique_id])
+
+  # Calculate the mean and standard deviation of the average noise values across all agents
   self.meanNoise = statistics.mean(list(self.allavgNoise.values()))
   self.stdDNoise = statistics.stdev(list(self.allavgNoise.values()))
   return self.fN
@@ -383,7 +428,7 @@ def computeThoryvos(self):
     nag = self.NagentsIn
   # print(self.NagentsIn)
   self.totalAgInC[nag] = self.totalAgInC.get(nag,0) + self.TCO/max(1,nag)
-  self.totalAgInQ[nag] = self.totalAgInQ.get(nag,0) + self.QoS
+  self.totalAgInQ[nag] = self.totalAgInQ.get(nag,0) + self.QoS 
   self.AgInTimes[nag] = self.AgInTimes.get(nag,0) + 1
   self.avgAgInC[nag] = self.totalAgInC.get(nag,0)/max(1,self.AgInTimes.get(nag,0))
   self.avgAgInQ[nag] = self.totalAgInQ.get(nag,0)/max(1,self.AgInTimes.get(nag,0))
