@@ -1,7 +1,7 @@
 from mesa import Model
 import src.Helpers.init_helpers as ip
 import  src.Helpers.thoryvos2 as th
-from stable_baselines3 import DQN
+from stable_baselines3 import A2C
 import random
 
 class Environment(Model):
@@ -32,10 +32,11 @@ class Environment(Model):
   def step(self):
     env = th.SoSPole(self)
     observation = env.reset()
-    modeldqn = DQN("MlpPolicy", env, verbose=0, exploration_fraction=0.1, exploration_final_eps=0.1, exploration_initial_eps=1.0, learning_starts=1000)
+    modeldqn = A2C("MlpPolicy", env, verbose=0)
     modeldqn.learn(total_timesteps=self.totallearn)
     observation = env.reset()
-      # observation, reward, done, info = env.step(action)
+    
     for _ in range(self.totalrounds):
       action, _states = modeldqn.predict(observation, deterministic=True)
       observation, reward, done, info = env.step(action)
+    
