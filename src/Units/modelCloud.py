@@ -30,11 +30,12 @@ class Environment(Model):
     ip.init_collectors_cloud(self)
     
   def step(self):
-    env = th.SoSPole(self)
-    observation = env.reset()
+    env = th.SoSPole(self) # Create an instance of the SoSPole environment with the current model configuration.
+    observation = env.reset() # Reset the environment to its initial state and get the initial observation.
+    # Initialize a DQN model.
     modeldqn = DQN("MlpPolicy", env, verbose=0, exploration_fraction=0.1, exploration_final_eps=0.1, exploration_initial_eps=1.0, learning_starts=1000)
-    modeldqn.learn(total_timesteps=self.totallearn)
-    observation = env.reset()
+    modeldqn.learn(total_timesteps=self.totallearn) # Start the learning process over the specified number of total timesteps.
+    observation = env.reset() # Reset the environment again to start a new series of steps or episodes.
       # observation, reward, done, info = env.step(action)
     for _ in range(self.totalrounds):
       action, _states = modeldqn.predict(observation, deterministic=True)

@@ -98,31 +98,35 @@ def reset_mamodel(self):
 def workDynB(state,model,action):
   model.schedule.step() # Activates the agent and stages any necessary changes, but does not apply them yet
   action_update(action,model)
-  model.iNprev = model.iN
-  procC.initialiseRound(model)
-  procC.genJobs(model)
-  procC.orderNchooseJobs(model)
-  procC.processJobsOrder(model)
-  state = state_update_dyn(state,model)
-  procC.iNSr(model)
-  procC.netNoise(model)
-  procC.backNoise(model)
+  model.iNprev = model.iN # Store the previous individual noise
+  procC.initialiseRound(model) # Update active agents, neighbours and trust
+  procC.genJobs(model) # Generate jobs, priority and urgency for each agent
+  procC.orderNchooseJobs(model) # Select the agents whose jobs are to be processed, based on the number of agents to be active
+  procC.processJobsOrder(model) # Process the jobs of the selected/not selected agents (Delay, cost)
+  state = state_update_dyn(state,model) # Update the state of the environment (Jobs, urgency and selection status of each agent)
+  procC.iNSr(model) # Compute individual and expert noise
+  procC.netNoise(model) # Compute foreground noise
+  procC.backNoise(model) # Compute background noise
+
+  # Select a voice to attend to based on the update parameter
   # if setting is to attend to random noise, choose noise randomly
   if model.update == 'ran': 
     model.fN = procC.attendRandom(model)
   else: 
     # otherwise select noise based on the parameter of update
     model.fN = procC.attendNoiseFBIEandR(model)
-  procC.computeThoryvos(model) 
-  # update attention to noise based on expternally determined objective
+
+  procC.computeThoryvos(model) # Compute noise levels and statistical metrics (mean and standard deviation of noise types)
+  # update attention to noise based on the update parameter
   if model.update == 'ind': 
     up.updAttNInd(model)
   elif model.update == 'com': 
     up.updAttNCom(model)
   else: 
     up.updAttNExp(model)
-  procC.community_sources(model)
-  procC.attAlignment(model)
+
+  procC.community_sources(model) # Identify top 'n' sources of influence
+  procC.attAlignment(model) # Visualise attention
   model.datacollector.collect(model)
   model.datacollector2.collect(model)
   model.datacollector3.collect(model)
@@ -132,44 +136,52 @@ def workDynB(state,model,action):
   model.datacollector7.collect(model)
   return state
 
-#reward based on the initial params 
+# Reward for regulator based on the initial reward parameter 
 def rewardDyn(model):
   if model.rewardinp == 'exp':
-    model.reward = -model.expNoiseUrg#/max(1,model.NagentsIn)
+    model.reward = -model.expNoiseUrg#/max(1,model.NagentsIn) # Reward based on the expert noise
   elif model.rewardinp == 'com':
-    model.reward = -model.indThoryvos
+    model.reward = -model.indThoryvos # Reward based on the total individual noise
   elif model.rewardinp == 'uni':
-    model.reward = -model.thoryvos
+    model.reward = -model.thoryvos # Reward based on the total noise
   else: 
-    model.reward = -statistics.stdev(list(model.iN))
+    model.reward = -statistics.stdev(list(model.iN)) # Reward based on the standard deviation of the individual noise
 
 #MAIN CLASS OF THE ENVIRONMENT - Custom environment based on gym library
 class SoSPole(gym.Env):
-  def __init__(self, model,max_steps=2000): # agent
-    self.observation_shape = (model.n_agents,3)
+  def __init__(self, model,max_steps=2000): 
+    self.observation_shape = (model.n_agents,3) # Define the shape of the observation space based on the number of agents and each having 3 features (job, urgency, selection status)
+    # Define the observation space as a Box space, which is suitable for the continuous state space where each agent has 3 observable features
     self.observation_space = gym.spaces.Box(low = np.zeros(self.observation_shape), high = np.full(self.observation_shape,model.maxJobSize),dtype = np.float16)
+    # Define the action space. Each action corresponds to the number of active agents in the next iteration
     self.actions = list(range(1,model.n_agents))
     self.action_space = gym.spaces.Discrete(len(self.actions))
     self.log = ''
     self.MAmodel = model
-    self.max_steps = max_steps
+    self.max_steps = max_steps # Set the maximum number of steps the environment can take before resetting
 
   def reset(self):
+    # Reset the environment to an initial state
+    # Initialize the state of the environment as zeros
     self.state = np.zeros(self.observation_shape)
     reset_mamodel(self.MAmodel)
     self.steps_left = self.max_steps
-    action = self.MAmodel.NagentsIn
-    self.state = workDynB(self.state,self.MAmodel,action)
+    action = self.MAmodel.NagentsIn # Get the initial action based on the number of agents in the model
+    self.state = workDynB(self.state,self.MAmodel,action) # Update the state of the environment
     return self.state
   
-  # this is the main loop
   def step(self, action):
+    # Step function to move the environment to the next state based on an action
+    # Increment the rounds in the model
     self.MAmodel.rounds = self.MAmodel.rounds+1
-    self.state = workDynB(self.state,self.MAmodel,action)
-    rewardDyn(self.MAmodel)
+    self.state = workDynB(self.state,self.MAmodel,action) # Update the state of the environment
+    # Compute the reward based on the initial reward parameter
+    rewardDyn(self.MAmodel) 
     new_score = self.MAmodel.reward
     reward = new_score 
+    # Determine if the environment should reset based on the number of steps left
     self.steps_left -= 1
     done = (self.steps_left <= 0)
+    # Return the new state, reward, done status, and an empty dictionary for extra info
     return self.state, reward, done, {}
   

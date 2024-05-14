@@ -24,7 +24,7 @@ def init_trust(self):
     agent.trustNoise = 0.5
     agent.selfconfidence = 0.5
 
-# Initialise network properties in every round ()
+# Initialise network properties in every round
 def initialiseRound(self):
   # self.rounds += 1
   self.activeAgents = []
@@ -54,7 +54,7 @@ def genJobs(self):
 
 # Order jobs based on size (ascending) and urgency (descending) 
 # and select the smallest urgent jobs based on the number of agents to be included
-def orderNchooseJobs(self): #returns updated the jobsIn
+def orderNchooseJobs(self): 
   jobsIncr = dict(sorted(self.allJobs.items(), key=lambda item: item[1],reverse=False)) # Sort jobs in ascending order of size
   for ag, js in jobsIncr.items():
     jobsIncr[ag] = self.allUrg.get(ag,0) # Update job size to urgency
@@ -105,7 +105,7 @@ def processJobsOrder(self):
   # reconsider TQoS, TCO denominator 
   self.QoS = sum(self.iQoS.values())/max(1,self.NagentsIn) # Average quality of service
   self.TCO = totalCompute + self.fixedcost # Total cost of operation
-  # Update iindividual cost for each agent
+  # Update individual cost for each agent
   for agent in self.activeAgents: 
     if agent in self.agentsIn:
       self.iTCO[agent] = self.TCO/max(1,self.NagentsIn)
@@ -166,23 +166,23 @@ def iNSr(self):
   # print(self.NagentsIn,max(self.iN.values()),self.expNoiseUrg,min(self.iN.values()))         
 
 # generate individual noise based on quality of service (delay) and cost 
-""" def iNoiseTest(self):
-  self.iN = {}
-  self.expNoise = ((self.n_agents*self.maxJobSize)/2)/((self.n_agents*self.maxJobSize/2) + self.fixedcost)-self.NagentsIn*self.maxJobSize/(self.NagentsIn*self.maxJobSize + self.fixedcost)
-  for agent in self.schedule.agents: 
-    if agent.unique_id in self.expertsIn:
-      Si = self.expNoise
-    else: 
-      if agent.unique_id not in self.agentsIn:
-        Si = 0
-      else: 
-        Q = self.iQoS.get(agent.unique_id,0)
-        C = self.iTCO.get(agent.unique_id,0)
-        noise = Q/C
-        Si = noise
-    agent.iN = Si #(-1+2/(1+math.exp(-(Si))))  
-    agent.xN = self.expNoise
-    self.iN[agent.unique_id] = agent.iN """
+# def iNoiseTest(self):
+#   self.iN = {}
+#   self.expNoise = ((self.n_agents*self.maxJobSize)/2)/((self.n_agents*self.maxJobSize/2) + self.fixedcost)-self.NagentsIn*self.maxJobSize/(self.NagentsIn*self.maxJobSize + self.fixedcost)
+#   for agent in self.schedule.agents: 
+#     if agent.unique_id in self.expertsIn:
+#       Si = self.expNoise
+#     else: 
+#       if agent.unique_id not in self.agentsIn:
+#         Si = 0
+#       else: 
+#         Q = self.iQoS.get(agent.unique_id,0)
+#         C = self.iTCO.get(agent.unique_id,0)
+#         noise = Q/C
+#         Si = noise
+#     agent.iN = Si #(-1+2/(1+math.exp(-(Si))))  
+#     agent.xN = self.expNoise
+#     self.iN[agent.unique_id] = agent.iN 
 
 # Foreground noise - Which agent to ask for opinion, FROM NEIGHBOURS (their individual noise, iN)
 def netNoise(self):
@@ -322,7 +322,7 @@ def attendNoiseFBIEandR(self):
   self.stdDNoise = statistics.stdev(list(self.allavgNoise.values()))
   return self.fN
 
-# if objective is random, select to pay attention to noise randomly
+# If the objective is random, select to pay attention to a noise randomly
 def attendRandom(self):
   self.fN = {}
   self.allnoiseselection = {}
@@ -352,19 +352,27 @@ def attendRandom(self):
   self.stdDNoise = statistics.stdev(list(self.allavgNoise.values()))
   return self.fN
 
-# identify sources of opinion (i.e. influencers)
+# Identify sources of opinion (i.e. influencers)
 def community_sources(self):
+  # Sort agents by the number of times they have been asked for their opinion, in descending order of frequency
   self.timesasked = dict(sorted(self.timesasked.items(), key=lambda item: item[1],reverse=True))
-  n = math.ceil(math.sqrt(self.n_agents))
+  
+  # Calculate the number of top sources to consider as significant influencers, based on the square root of the number of agents
+  n = math.ceil(math.sqrt(self.n_agents)) 
   sources = []
+
   for key,value in self.timesasked.items():
+    # Normalize the number of times each agent has been asked by the total number of possible interactions (rounds * number of agents)
     self.amountasked[key] = value/max(1,self.rounds*self.n_agents)
+    # Collect only the top 'n' agents as significant sources
     if n > 0:
      sources.append(key)
      n = n-1 
   self.creditsources = sources
   common = 0
   different = 0 
+
+  # Count how many of the identified top sources are considered experts and how many are not
   for agent in sources: 
     if agent in self.expertsIn:
       common += 1
@@ -372,18 +380,20 @@ def community_sources(self):
       different += 1
   self.commonsources = common*10
   self.difsources = different*10
+  # Update each agent's record with the normalized amount they have been asked for their opinion
   for agent in self.schedule.agents: 
-    agent.amasked = self.amountasked.get(agent.unique_id,0)
+    agent.amasked = self.amountasked.get(agent.unique_id,0) # 
     if agent.unique_id in self.expertsIn:
-      agent.expert = 1
+      agent.expert = 1 # Flag the agent as an expert
  
-# helper action for visualisation of attention 
+# Helper action for visualisation of attention 
 def attAlignment(self):
   self.aIV = 0
   self.aEV = 0
   self.aFN = 0
   self.aBN = 0
-  for value in self.allnoiseselection.values():
+  # Count the number of times the collective payed attention to each noise source
+  for value in self.allnoiseselection.values(): 
     if value == 0:
       self.aIV += 1
     elif value == 2:
@@ -392,12 +402,14 @@ def attAlignment(self):
       self.aFN += 1
     else: 
       self.aBN +=1
-  self.aIV = 100*self.aIV/max(1,len(self.activeAgents))
+
+  # Calculate the percentage of attention paid to each noise source
+  self.aIV = 100*self.aIV/max(1,len(self.activeAgents)) 
   self.aEV = 100*self.aEV/max(1,len(self.activeAgents))
   self.aFN = 100*self.aFN/max(1,len(self.activeAgents))
   self.aBN = 100*self.aBN/max(1,len(self.activeAgents))  
 
-#  aggregate noise produced by agents
+# Function to calculate and aggregate different types of noise generated by agents.
 def computeThoryvos(self):
   # randomsample = self.agentsIn
   totalnoise = 0
@@ -406,15 +418,22 @@ def computeThoryvos(self):
   totallongnoise = 0
   totalnetnoise = 0
   totalexp = 0
+
+  # Aggregate expert and total noise
   for agent, noise in self.fN.items():
     totalnoise = totalnoise + noise
     totalexp = totalexp + self.expNoiseUrg
+  # Aggregate individual noise  
   for agent, indnoise in self.iN.items():
     totalindnoise = totalindnoise + indnoise
+  # Aggregate foreground noise
   for agent, noise in self.inN.items():
     totalnetnoise = totalindnoise + noise 
+  # Aggregate background noise
   for agent, noise in self.intN.items():
-    totalnoiseit = totalnoiseit + noise
+    totalnoiseit = totalnoiseit + noise 
+
+  # Compute overall noise and related statistics  
   self.thoryvos = totalnoise#/len(randomsample)
   self.indThoryvos = totalindnoise#/max(1,len(randomsample))
   self.avgIndTh = self.indThoryvos/max(1,len(self.activeAgents))
@@ -422,21 +441,26 @@ def computeThoryvos(self):
   self.netThoryvos = totalnetnoise
   self.expThoryvos = totalexp
   self.longThoryvos = totallongnoise
+
+  # If the number of agents in the network is stored as a numpy array, handle it appropriately.
   if isinstance(self.NagentsIn, np.ndarray):
     nag = self.NagentsIn.item(0)
   else:
     nag = self.NagentsIn
   # print(self.NagentsIn)
-  self.totalAgInC[nag] = self.totalAgInC.get(nag,0) + self.TCO/max(1,nag)
-  self.totalAgInQ[nag] = self.totalAgInQ.get(nag,0) + self.QoS 
-  self.AgInTimes[nag] = self.AgInTimes.get(nag,0) + 1
-  self.avgAgInC[nag] = self.totalAgInC.get(nag,0)/max(1,self.AgInTimes.get(nag,0))
-  self.avgAgInQ[nag] = self.totalAgInQ.get(nag,0)/max(1,self.AgInTimes.get(nag,0))
+  self.totalAgInC[nag] = self.totalAgInC.get(nag,0) + self.TCO/max(1,nag) # Aggregate total cost of operation per agent
+  self.totalAgInQ[nag] = self.totalAgInQ.get(nag,0) + self.QoS # Aggregate quality of service per agent 
+  self.AgInTimes[nag] = self.AgInTimes.get(nag,0) + 1 # Increment the number of times the agent has been included in the list of agents to process jobs
+  self.avgAgInC[nag] = self.totalAgInC.get(nag,0)/max(1,self.AgInTimes.get(nag,0)) # Calculate average total cost of operation per agent
+  self.avgAgInQ[nag] = self.totalAgInQ.get(nag,0)/max(1,self.AgInTimes.get(nag,0)) # Calculate average quality of service per agent
+
+  # Calculate the mean and standard deviation of each noise type and attention to noise
   self.stdii = statistics.stdev(list(self.iN.values()))
   self.stdfi = statistics.stdev(list(self.inN.values()))
   self.stdbi = statistics.stdev(list(self.intN.values()))
   self.stdei = statistics.stdev(list(self.xN.values()))
   self.stdsel = statistics.stdev(list(self.fN.values()))
+  
   self.Eii = statistics.mean(list(self.iN.values()))
   self.Efi = statistics.mean(list(self.inN.values()))
   self.Ebi = statistics.mean(list(self.intN.values()))

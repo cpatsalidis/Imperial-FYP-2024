@@ -7,35 +7,35 @@ class Agent(Agent):
     super().__init__(unique_id, model)
     self.unique_id = unique_id
     if self.model.rounds == 0:
-      self.oneneighbors = []
-      self.neighbors = []
+      self.oneneighbors = [] # first degree neighbors
+      self.neighbors = [] # Up to 6th degree neighbors
     self.start = 1
     self.myrounds = self.model.rounds
     self.selfconfidence = 0.5
     self.ucoefficient = 0.1
     self.trust = {}
-    self.trustNoise = 0.5
-    self.trustFN = 0.5
-    self.trustExp =0.5
-    self.selfconfidenceit = 0.5
-    self.last_asked = 0
-    self.last_asked_it = 0
-    self.c = 0.001
-    self.averagedemand = random.randint(1,self.model.maxJobSize)
-    self.averagepriority = random.uniform(self.averagedemand,self.model.avgDelay)#random.uniform(self.model.avgDelay/2,self.model.avgDelay+self.model.maxJobSize/2) #priority defines amount of delay accepted
-    self.averageurgency = random.randint(1,self.model.maxJobSize) 
-    self.jobSize = self.averagedemand
-    self.jobPriority = self.averagepriority
-    self.jobUrgency =self.averageurgency
-    self.totalJobS = self.jobSize
-    self.totalJobP = self.jobPriority
-    self.iN = 0
-    self.inN = 0
+    self.trustNoise = 0.5 # Trust in background noise
+    self.trustFN = 0.5 # Trust in foreground noise
+    self.trustExp =0.5 # Trust in expert noise
+    self.selfconfidenceit = 0.5 # Trust in individual noise
+    self.last_asked = 0 # Last agent asked for their opinion
+    self.last_asked_it = 0 # not used
+    self.c = 0.001 
+    self.averagedemand = random.randint(1,self.model.maxJobSize) # Initial average demand affects each agents job size in 'genJobs' function
+    self.averagepriority = random.uniform(self.averagedemand,self.model.avgDelay) #random.uniform(self.model.avgDelay/2,self.model.avgDelay+self.model.maxJobSize/2) #priority defines amount of delay accepted
+    self.averageurgency = random.randint(1,self.model.maxJobSize) # Initial average urgency is random between 1 and maxJobSize
+    self.jobSize = self.averagedemand  # Initial job size is the average demand
+    self.jobPriority = self.averagepriority # Initial job priority is the average priority
+    self.jobUrgency =self.averageurgency # Initial job urgency is the average urgency
+    self.totalJobS = self.jobSize # Total job size is the job size
+    self.totalJobP = self.jobPriority # Total job priority is the job priority
+    self.iN = 0 # Individual noise
+    self.inN = 0 # Neighbour noise (Foreground noise)
     self.intN = 0
     self.fN = 0
     self.fintN = 0
     self.longiN = 0
-    self.xN = 0
+    self.xN = 0 # Exprert noise
     self.Ns = random.choice([-1,0,1,2])
     model.allJobs[self.unique_id] = self.jobSize 
     model.allPrios[self.unique_id] = self.jobPriority
@@ -53,9 +53,9 @@ class Agent(Agent):
     model.timesasked[self.unique_id] = 0
     model.amountasked[self.unique_id] = 0
     self.amasked = 0
-    self.expert = 0
+    self.expert = 0 # Identify if agent is an expert
     
-    #initialise credence to neighbours 
+  # Initialise credence to neighbours 
   def initialise_trust(self):
     node_list = self.oneneighbors
     init_trust = {}
@@ -63,6 +63,7 @@ class Agent(Agent):
       init_trust[i] = 0.5    
     return init_trust
 
+  # Reset agent to initial state (always called)
   def step(self):
     if (self.start == 1):
       self.start = 0
