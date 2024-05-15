@@ -201,6 +201,8 @@ def netNoise(self):
       trust_internal = agent.trust.copy()
       max_value = max(agent.trust.values()) # Find the maximum trust value
       max_keys = [k for k, v in agent.trust.items() if v == max_value] # Find all agents with the maximum trust value
+      obs_voi = agent.voi # Value of information
+
 
       # Check if multiple agents have the highest trust value
       if (type(max_keys) == list):
@@ -214,6 +216,17 @@ def netNoise(self):
             p = random.uniform(0, 1) # Generate a random probability
             # If random probability > 0.5 and the chosen agent has non-zero individual noise and is a neighbor, ask for opinion
             if (p > 0.5 and self.iN.get(key,0) !=0 and key in agent.oneneighbors):
+              if (agent.pwtp >= obs_voi):
+                trusted_sec_n = observer(self, self.schedule.agents[key]) # Find the trusted secondary neighbor
+                self.inN[agent.unique_id] = self.iN.get(trusted_sec_n,0)
+                agent.last_asked = trusted_sec_n
+                agent.voi = min(1, agent.voi + (abs(agent.pwtp - obs_voi))/2)
+                self.voi[agent.unique_id] = agent.voi
+                agent.suggestion += 1
+                self.suggestion[agent.unique_id] = agent.suggestion
+
+              agent.voi = max(0, agent.voi - (abs(agent.pwtp - obs_voi))/2)
+              self.voi[agent.unique_id] = agent.voi
               self.inN[agent.unique_id] = self.iN.get(key,0)
               agent.last_asked = key # Set the last agent asked for opinion to the chosen agent
               self.timesasked[key] = self.timesasked.get(key,0) + 1 # Increment the number of times the chosen agent has been asked for opinion
@@ -466,3 +479,15 @@ def computeThoryvos(self):
   self.Ebi = statistics.mean(list(self.intN.values()))
   self.Eei = statistics.mean(list(self.xN.values()))
   self.Esel = statistics.mean(list(self.fN.values()))
+
+def observer(self, agent):
+  if agent.oneneighbors == []: 
+    chosen_key = random.choice(self.activeAgents)
+  else:
+    total = sum(agent.trust.values())
+    probabilities = {key: value / total for key, value in agent.trust.items()}
+
+    # Choose a key based on the computed probabilities.
+    chosen_key = random.choices(list(probabilities.keys()), weights=probabilities.values(), k=1)[0]
+    return chosen_key
+    

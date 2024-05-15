@@ -20,6 +20,9 @@ class Agent(Agent):
     self.selfconfidenceit = 0.5 # Trust in individual noise
     self.last_asked = 0 # Last agent asked for their opinion
     self.last_asked_it = 0 # not used
+    self.suggestion = 0 # 
+    self.voi = 1 # Value of information
+    self.pwtp = 0.5 # Price willing to pay for observer information
     self.c = 0.001 
     self.averagedemand = random.randint(1,self.model.maxJobSize) # Initial average demand affects each agents job size in 'genJobs' function
     self.averagepriority = random.uniform(self.averagedemand,self.model.avgDelay) #random.uniform(self.model.avgDelay/2,self.model.avgDelay+self.model.maxJobSize/2) #priority defines amount of delay accepted

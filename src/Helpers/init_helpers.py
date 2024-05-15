@@ -212,6 +212,9 @@ def initVarCloud(self):
     self.maxiQoS = {} # Maximum individual quality of servicev
     self.miniTCO = {}
     self.agentOrder = {}
+    self.voi = {}
+    self.suggestion = {} # suggestion for the next agent to ask
+    self.pwtp = {}
     self.iN = {} # Individual noise
     self.xN = {} # Expert noise TOP
     self.iNprev = {}

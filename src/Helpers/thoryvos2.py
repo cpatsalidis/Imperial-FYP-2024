@@ -63,6 +63,7 @@ def reset_mamodel(self):
   self.meanCumDis = 0
   self.allCumNoise = {}
   self.allavgNoise = {}
+  self.suggestion = {} # suggestion for the next agent to ask
   self.meanNoise = 0
   self.stdNoise = 0
   self.stdDis = 0
@@ -144,6 +145,8 @@ def rewardDyn(model):
     model.reward = -model.indThoryvos # Reward based on the total individual noise
   elif model.rewardinp == 'uni':
     model.reward = -model.thoryvos # Reward based on the total noise
+  elif model.rewardinp == 'fore':
+    model.reward = -model.netThoryvos # Reward based on the foreground noise
   else: 
     model.reward = -statistics.stdev(list(model.iN)) # Reward based on the standard deviation of the individual noise
 

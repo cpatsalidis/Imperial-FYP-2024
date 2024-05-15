@@ -20,8 +20,11 @@ def updAttNInd(self):
     elif self.allnoiseselection.get(agent.unique_id,0) == 1:
       if dif > 0: 
         agent.trustFN = max(0,agent.trustFN-agent.trustFN*agent.c)
+        agent.pwtp = max(0,agent.pwtp+agent.pwtp*0.2)
       elif dif < 0:   
         agent.trustFN = min(1,agent.trustFN+agent.trustFN*agent.c)
+        agent.pwtp = min(1,agent.pwtp-dif*0.2)
+        self.pwtp[agent.unique_id] = agent.pwtp
     # If the difference in noise is positive (Noise increase), reduce EXPERT TRUST proportionally; otherwise, increase it
     elif self.allnoiseselection.get(agent.unique_id,0) == 2: 
       if dif > 0:
@@ -60,6 +63,8 @@ def updAttNCom(self):
       agent.selfconfidence = max(0,agent.selfconfidence - agent.selfconfidence*agent.c)
     elif max(difown,diffore,difback,difexp) == diffore:
       agent.trustFN = max(0,agent.trustFN-agent.trustFN*agent.c)
+      agent.pwtp = min(1,agent.pwtp-diffore*0.2)
+      self.pwtp[agent.unique_id] = agent.pwtp
     elif max(difown,diffore,difback,difexp) == difback:
       agent.trustNoise = max(0,agent.trustNoise - agent.trustNoise*agent.c)
     elif max(difown,diffore,difback,difexp) == difexp:
