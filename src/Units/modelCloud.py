@@ -1,6 +1,7 @@
 from mesa import Model
 import src.Helpers.init_helpers as ip
 import  src.Helpers.thoryvos2 as th
+import src.Units.observer as ob
 from stable_baselines3 import DQN
 import random
 

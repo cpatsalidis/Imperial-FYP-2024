@@ -3,6 +3,7 @@ import numpy as np
 import src.Helpers.processesCloud as procC
 import src.Helpers.updates as up
 import src.Helpers.init_helpers as ih
+import src.Units.observer as obs
 import gym.spaces
 import random
 import statistics
@@ -91,6 +92,7 @@ def reset_mamodel(self):
   self.jobsize = 0
   self.agentsIn = []
   self.jobsIn = {}
+  self.agent_interactions = {i: {j: 0 for j in range(self.n_agents) if i != j} for i in range(self.n_agents)}
  
 # Main look of the game, generates jobs of agents, calls all the functions related to the voices, 
 # selects the voice based on the experimental parameters, forms collective expression,
@@ -162,6 +164,7 @@ class SoSPole(gym.Env):
     self.log = ''
     self.MAmodel = model
     self.max_steps = max_steps # Set the maximum number of steps the environment can take before resetting
+    self.observer = obs.Observer(model)
 
   def reset(self):
     # Reset the environment to an initial state
@@ -177,6 +180,7 @@ class SoSPole(gym.Env):
     # Step function to move the environment to the next state based on an action
     # Increment the rounds in the model
     self.MAmodel.rounds = self.MAmodel.rounds+1
+    self.observer.step()
     self.state = workDynB(self.state,self.MAmodel,action) # Update the state of the environment
     # Compute the reward based on the initial reward parameter
     rewardDyn(self.MAmodel) 

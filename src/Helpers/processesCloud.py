@@ -3,6 +3,7 @@ import src.Helpers.init_helpers as ih
 import math
 import src.Helpers.updates as up
 import statistics
+from src.Units.observer import Observer
 import numpy as np
 
 # This function initializes a dictionary of trust values for a list of neighboring nodes.
@@ -114,7 +115,7 @@ def processJobsOrder(self):
 # Generate individual noise and Expert noise based on quality of service (delay) and cost 
 def iNSr(self):
   self.iN = {} # Individual noise
-  urgin = 0 
+  urgin = 0
   urgout = 0
   urgall = 0 
   self.outavgNoise = 0 # Average noise for agents NOT included in the list of agents to process jobs
@@ -194,6 +195,7 @@ def netNoise(self):
       agentchosen = random.choice(self.activeAgents)
       self.inN[agent.unique_id] = self.iN.get(agentchosen,0)
       agent.last_asked = agentchosen # Set the last agent asked for opinion to the randomly selected agent
+      self.agent_interactions[agent.unique_id][agentchosen] += 1  # Update observer's dictionary
     # If the agent has neighbors, select an agent to ask for opinion based on trust values
     else:
       flag = 0 # A flag to indicate if a suitable agent has been found
@@ -217,7 +219,7 @@ def netNoise(self):
             # If random probability > 0.5 and the chosen agent has non-zero individual noise and is a neighbor, ask for opinion
             if (p > 0.5 and self.iN.get(key,0) !=0 and key in agent.oneneighbors):
               if (agent.pwtp >= obs_voi):
-                trusted_sec_n = observer(self, self.schedule.agents[key]) # Find the trusted secondary neighbor
+                trusted_sec_n = second_degree(self, self.schedule.agents[key]) # Find the trusted secondary neighbor
                 self.inN[agent.unique_id] = self.iN.get(trusted_sec_n,0)
                 agent.last_asked = trusted_sec_n
                 agent.voi = min(1, agent.voi + (abs(agent.pwtp - obs_voi))/2)
@@ -230,6 +232,7 @@ def netNoise(self):
               self.inN[agent.unique_id] = self.iN.get(key,0)
               agent.last_asked = key # Set the last agent asked for opinion to the chosen agent
               self.timesasked[key] = self.timesasked.get(key,0) + 1 # Increment the number of times the chosen agent has been asked for opinion
+              self.agent_interactions[agent.unique_id][key] += 1  # Update observer's dictionary
               flag = 1 # Indicate a suitable agent has been found
 
         # If no suitable agent is found in those with maximum trust, search among the rest
@@ -242,6 +245,7 @@ def netNoise(self):
                 self.inN[agent.unique_id] = self.iN.get(key,0)
                 agent.last_asked = key
                 self.timesasked[key] = self.timesasked.get(key,0) + 1
+                self.agent_interactions[agent.unique_id][key] += 1  # Update observer's dictionary
                 #if not evaluated yet
 
       # If nothing else, iterate over agents and randomly select whom to ask in the order of trust
@@ -254,6 +258,7 @@ def netNoise(self):
                 self.inN[agent.unique_id] = self.iN.get(key,0)
                 agent.last_asked = key
                 self.timesasked[key] = self.timesasked.get(key,0) + 1
+                self.agent_interactions[agent.unique_id][key] += 1  # Update observer's dictionary
                 flag = 1
 
       agent.inN = self.inN.get(agent.unique_id,0) # Set the agent's foreground noise to the selected agent's individual noise
@@ -480,7 +485,7 @@ def computeThoryvos(self):
   self.Eei = statistics.mean(list(self.xN.values()))
   self.Esel = statistics.mean(list(self.fN.values()))
 
-def observer(self, agent):
+def second_degree(self, agent):
   if agent.oneneighbors == []: 
     chosen_key = random.choice(self.activeAgents)
   else:

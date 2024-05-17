@@ -14,13 +14,13 @@ class Agent(Agent):
     self.selfconfidence = 0.5
     self.ucoefficient = 0.1
     self.trust = {}
+    self.timesasked = {}
     self.trustNoise = 0.5 # Trust in background noise
     self.trustFN = 0.5 # Trust in foreground noise
     self.trustExp =0.5 # Trust in expert noise
     self.selfconfidenceit = 0.5 # Trust in individual noise
     self.last_asked = 0 # Last agent asked for their opinion
     self.last_asked_it = 0 # not used
-    self.suggestion = 0 # 
     self.voi = 1 # Value of information
     self.pwtp = 0.5 # Price willing to pay for observer information
     self.c = 0.001 
@@ -40,6 +40,7 @@ class Agent(Agent):
     self.longiN = 0
     self.xN = 0 # Exprert noise
     self.Ns = random.choice([-1,0,1,2])
+    self.suggestion = 0
     model.allJobs[self.unique_id] = self.jobSize 
     model.allPrios[self.unique_id] = self.jobPriority
     model.allUrg[self.unique_id] = self.jobUrgency
@@ -57,6 +58,17 @@ class Agent(Agent):
     model.amountasked[self.unique_id] = 0
     self.amasked = 0
     self.expert = 0 # Identify if agent is an expert
+
+  def update_urgency(self, amount):
+        self.urgency = max(0, self.jobUrgency + amount)  # Ensure urgency doesn't go negative
+  
+  def update_trust(self, trust_updates):
+        for agent_id, multiplier in trust_updates.items():
+            if agent_id in self.trust:
+                #print(agent_id, " : ",multiplier)
+                self.trust[agent_id] = max(0, self.trust[agent_id] * multiplier)  # Ensure trust doesn't go negative
+                
+
     
   # Initialise credence to neighbours 
   def initialise_trust(self):

@@ -255,6 +255,8 @@ def initVarCloud(self):
     self.aEV = 0 # Number of times the collective payed attention to expert noise
     self.aFN = 0 # Number of times the collective payed attention to foreground noise
     self.aBN = 0 # Number of times the collective payed attention to background noise
+    self.agent_interactions = {i: {j: 0 for j in range(self.n_agents) if i != j} for i in range(self.n_agents)}
+
 
     # Create a scheduler that activates all agents at the same time each step.
     self.schedule = SimultaneousActivation(self) 
