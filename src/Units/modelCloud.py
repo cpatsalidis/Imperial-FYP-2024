@@ -27,8 +27,10 @@ class Environment(Model):
     self.rewardinp = reward
     self.G = ip.klemm_eguilez_network(self.n_agents,self.m,self.miu) #one unique network
     self.nextunique = self.n_agents
+    self.lying_fraction = random.uniform(0.2, 0.3)
     ip.initVarCloud(self)
     ip.init_collectors_cloud(self)
+    ip.convert_agents_to_liars(self)
     
   def step(self):
     env = th.SoSPole(self) # Create an instance of the SoSPole environment with the current model configuration.

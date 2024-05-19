@@ -32,10 +32,12 @@ class Agent(Agent):
     self.jobUrgency =self.averageurgency # Initial job urgency is the average urgency
     self.totalJobS = self.jobSize # Total job size is the job size
     self.totalJobP = self.jobPriority # Total job priority is the job priority
+    self.iN_real = 0
     self.iN = 0 # Individual noise
     self.inN = 0 # Neighbour noise (Foreground noise)
     self.intN = 0
     self.fN = 0
+    self.fn_real = 0
     self.fintN = 0
     self.longiN = 0
     self.xN = 0 # Exprert noise
@@ -58,15 +60,16 @@ class Agent(Agent):
     model.amountasked[self.unique_id] = 0
     self.amasked = 0
     self.expert = 0 # Identify if agent is an expert
+    self.is_lying = False
 
   def update_urgency(self, amount):
         self.urgency = max(0, self.jobUrgency + amount)  # Ensure urgency doesn't go negative
   
   def update_trust(self, trust_updates):
-        for agent_id, multiplier in trust_updates.items():
+        for agent_id, change in trust_updates.items():
             if agent_id in self.trust:
                 #print(agent_id, " : ",multiplier)
-                self.trust[agent_id] = max(0, self.trust[agent_id] * multiplier)  # Ensure trust doesn't go negative
+                self.trust[agent_id] = max(min(1, self.trust[agent_id] + change),0) 
                 
 
     

@@ -82,6 +82,7 @@ def reset_mamodel(self):
   self.fintN = {}
   self.orderJobs = {}
   self.thoryvos = 0
+  self.realThoryvos = 0
   self.indThoryvos = 0
   self.netThoryvos = 0
   self.itThoryvos = 0
@@ -125,9 +126,12 @@ def workDynB(state,model,action):
     up.updAttNInd(model)
   elif model.update == 'com': 
     up.updAttNCom(model)
+  elif model.update == 'lie':
+    up.updAttNLie(model)
   else: 
     up.updAttNExp(model)
-
+    
+  
   procC.community_sources(model) # Identify top 'n' sources of influence
   procC.attAlignment(model) # Visualise attention
   model.datacollector.collect(model)
@@ -147,8 +151,8 @@ def rewardDyn(model):
     model.reward = -model.indThoryvos # Reward based on the total individual noise
   elif model.rewardinp == 'uni':
     model.reward = -model.thoryvos # Reward based on the total noise
-  elif model.rewardinp == 'fore':
-    model.reward = -model.netThoryvos # Reward based on the foreground noise
+  elif model.rewardinp == 'lie':
+    model.reward = -model.realThoryvos # Reward based on the real noise
   else: 
     model.reward = -statistics.stdev(list(model.iN)) # Reward based on the standard deviation of the individual noise
 
@@ -164,7 +168,7 @@ class SoSPole(gym.Env):
     self.log = ''
     self.MAmodel = model
     self.max_steps = max_steps # Set the maximum number of steps the environment can take before resetting
-    self.observer = obs.Observer(model)
+    self.observer = obs.Observer(model) # Create an instance of the observer class
 
   def reset(self):
     # Reset the environment to an initial state
@@ -180,7 +184,10 @@ class SoSPole(gym.Env):
     # Step function to move the environment to the next state based on an action
     # Increment the rounds in the model
     self.MAmodel.rounds = self.MAmodel.rounds+1
-    self.observer.step()
+    #self.observer.step() # Update the observer
+    # for agent in self.MAmodel.schedule.agents:
+    #   if agent.unique_id == 0:
+    #     print(agent.unique_id, " : ",agent.trust)
     self.state = workDynB(self.state,self.MAmodel,action) # Update the state of the environment
     # Compute the reward based on the initial reward parameter
     rewardDyn(self.MAmodel) 

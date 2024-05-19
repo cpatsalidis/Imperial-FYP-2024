@@ -115,6 +115,7 @@ def processJobsOrder(self):
 # Generate individual noise and Expert noise based on quality of service (delay) and cost 
 def iNSr(self):
   self.iN = {} # Individual noise
+  self.iN_real = {} # Real individual noise
   urgin = 0
   urgout = 0
   urgall = 0 
@@ -153,11 +154,18 @@ def iNSr(self):
         Si = noise/10#noise+self.expNoiseUrg)/2
         self.inavgNoise = Si + self.inavgNoise # Update average noise for agents included in the list of agents to process jobs
 
-    # agent.longiN = agent.longiN+agent.iN
+    agent.longiN = agent.longiN+agent.iN
     # Set Individual and Expert noise for each agent
-    agent.iN = Si #(-1+2/(1+math.exp(-(Si))))   
-    agent.xN = self.expNoiseUrg
+    p = random.uniform(0, 1)
+    if agent.is_lying and p < 0.4:
+      agent.iN_real = Si
+      agent.iN = Si * 0.8  #(-1+2/(1+math.exp(-(Si))))  
+    else: 
+      agent.xN = self.expNoiseUrg
+      agent.iN_real = Si #(-1+2/(1+math.exp(-(Si))))
+      agent.iN = Si
     self.iN[agent.unique_id] = agent.iN
+    self.iN_real[agent.unique_id] = agent.iN_real
     self.xN[agent.unique_id] = self.expNoiseUrg
 
     # NOT USED
@@ -278,6 +286,7 @@ def backNoise(self):
 # Define a function to determine which noise source an agent should pay attention to based on different trust levels.
 def attendNoiseFBIEandR(self):
   self.fN = {}
+  self.fn_real = {}
   self.allnoiseselection = {} # Track the type of noise each agent selects
 
   for agent in self.schedule.agents:
@@ -293,21 +302,25 @@ def attendNoiseFBIEandR(self):
       # Attend to Expert noise
       if max(fore,back,own,exp) == exp:
         self.fN[agent.unique_id] = self.expNoiseUrg
+        self.fn_real[agent.unique_id] = self.expNoiseUrg
         self.allnoiseselection[agent.unique_id] = 2
         agent.Ns = 2
       # Attend to Foreground noise
       elif max(fore,back,own,exp) == fore:
         self.fN[agent.unique_id] = self.inN.get(agent.unique_id,0)
+        self.fn_real[agent.unique_id] = self.inN.get(agent.unique_id,0)
         self.allnoiseselection[agent.unique_id] = 1
         agent.Ns = 1
       # Attend to Background noise
       elif max(fore,back,own,exp) == back:
         self.fN[agent.unique_id] = self.intN.get(agent.unique_id,0)
+        self.fn_real[agent.unique_id] = self.intN.get(agent.unique_id,0)
         self.allnoiseselection[agent.unique_id] = -1
         agent.Ns = -1
       # Attend to Individual noise
       else: 
         self.fN[agent.unique_id] = self.iN.get(agent.unique_id,0)
+        self.fn_real[agent.unique_id] = self.iN_real.get(agent.unique_id,0)
         self.allnoiseselection[agent.unique_id] = 0
         agent.Ns = 0
 
@@ -316,21 +329,26 @@ def attendNoiseFBIEandR(self):
       choose = random.choice(['f','b','i','x'])
       if choose == 'x':
         self.fN[agent.unique_id] = self.expNoiseUrg
+        self.fn_real[agent.unique_id] = self.expNoiseUrg
         self.allnoiseselection[agent.unique_id] = 2
         agent.Ns = 2
       elif choose == 'f':
         self.fN[agent.unique_id] = self.inN.get(agent.unique_id,0)
+        self.fn_real[agent.unique_id] = self.inN.get(agent.unique_id,0)
         self.allnoiseselection[agent.unique_id] = 1
         agent.Ns = 1
       elif choose == 'b':
         self.fN[agent.unique_id] = self.intN.get(agent.unique_id,0)
+        self.fn_real[agent.unique_id] = self.intN.get(agent.unique_id,0)
         self.allnoiseselection[agent.unique_id] = -1
         agent.Ns = -1
       else: 
         self.fN[agent.unique_id] = self.iN.get(agent.unique_id,0)
+        self.fn_real[agent.unique_id] = self.iN_real.get(agent.unique_id,0)
         self.allnoiseselection[agent.unique_id] = 0    
         agent.Ns = 0  
     agent.fN = self.fN.get(agent.unique_id,0) # Set the agent's current noise to the selected noise attention
+    agent.fn_real = self.fn_real.get(agent.unique_id,0)
     self.allCumNoise[agent.unique_id] = self.allCumNoise.get(agent.unique_id,0) + self.fN.get(agent.unique_id,0)
     self.allavgNoise[agent.unique_id] = self.allCumNoise.get(agent.unique_id,0)/max(1,self.allRoundsAlive.get(agent.unique_id,0))
     # print(self.allnoiseselection[agent.unique_id])
@@ -343,6 +361,7 @@ def attendNoiseFBIEandR(self):
 # If the objective is random, select to pay attention to a noise randomly
 def attendRandom(self):
   self.fN = {}
+  self.fn_real = {}
   self.allnoiseselection = {}
   for agent in self.schedule.agents:
     fore = agent.trustFN
@@ -352,23 +371,28 @@ def attendRandom(self):
     choose = random.choice(['f','b','i','x'])
     if choose == 'x':
       self.fN[agent.unique_id] = self.expNoiseUrg
+      self.fn_real[agent.unique_id] = self.expNoiseUrg
       self.allnoiseselection[agent.unique_id] = 2
     elif choose == 'f':
       self.fN[agent.unique_id] = self.inN.get(agent.unique_id,0)
+      self.fn_real[agent.unique_id] = self.inN.get(agent.unique_id,0)
       self.allnoiseselection[agent.unique_id] = 1
     elif choose == 'b':
       self.fN[agent.unique_id] = self.intN.get(agent.unique_id,0)
+      self.fn_real[agent.unique_id] = self.intN.get(agent.unique_id,0)
       self.allnoiseselection[agent.unique_id] = -1
     else: 
       self.fN[agent.unique_id] = self.iN.get(agent.unique_id,0)
+      self.fn_real[agent.unique_id] = self.iN_real.get(agent.unique_id,0)
       self.allnoiseselection[agent.unique_id] = 0      
     agent.fN = self.fN.get(agent.unique_id,0)
+    agent.fn_real = self.fn_real.get(agent.unique_id,0)
     self.allCumNoise[agent.unique_id] = self.allCumNoise.get(agent.unique_id,0) + self.fN.get(agent.unique_id,0)
     self.allavgNoise[agent.unique_id] = self.allCumNoise.get(agent.unique_id,0)/max(1,self.allRoundsAlive.get(agent.unique_id,0))
     # print(self.allnoiseselection[agent.unique_id])
   self.meanNoise = statistics.mean(list(self.allavgNoise.values()))
   self.stdDNoise = statistics.stdev(list(self.allavgNoise.values()))
-  return self.fN
+  return self.fN, self.fn_real
 
 # Identify sources of opinion (i.e. influencers)
 def community_sources(self):
@@ -436,11 +460,17 @@ def computeThoryvos(self):
   totallongnoise = 0
   totalnetnoise = 0
   totalexp = 0
+  totalrealnoise = 0
+  totalrealind = 0
 
   # Aggregate expert and total noise
   for agent, noise in self.fN.items():
     totalnoise = totalnoise + noise
     totalexp = totalexp + self.expNoiseUrg
+  for agent, noise in self.fn_real.items():
+    totalrealnoise = totalrealnoise + noise
+  for agent, noise in self.iN_real.items():
+    totalrealind = totalrealind + noise
   # Aggregate individual noise  
   for agent, indnoise in self.iN.items():
     totalindnoise = totalindnoise + indnoise
@@ -453,6 +483,8 @@ def computeThoryvos(self):
 
   # Compute overall noise and related statistics  
   self.thoryvos = totalnoise#/len(randomsample)
+  self.realThoryvos = totalrealnoise
+  print(totalrealind, totalindnoise)
   self.indThoryvos = totalindnoise#/max(1,len(randomsample))
   self.avgIndTh = self.indThoryvos/max(1,len(self.activeAgents))
   self.itThoryvos = totalnoiseit#/len(randomsample)
@@ -473,17 +505,21 @@ def computeThoryvos(self):
   self.avgAgInQ[nag] = self.totalAgInQ.get(nag,0)/max(1,self.AgInTimes.get(nag,0)) # Calculate average quality of service per agent
 
   # Calculate the mean and standard deviation of each noise type and attention to noise
+  self.stdii_real = statistics.stdev(list(self.iN_real.values()))
   self.stdii = statistics.stdev(list(self.iN.values()))
   self.stdfi = statistics.stdev(list(self.inN.values()))
   self.stdbi = statistics.stdev(list(self.intN.values()))
   self.stdei = statistics.stdev(list(self.xN.values()))
   self.stdsel = statistics.stdev(list(self.fN.values()))
-  
+  self.stdselreal = statistics.stdev(list(self.fn_real.values()))
+
+  self.Eii_real = statistics.mean(list(self.iN_real.values()))
   self.Eii = statistics.mean(list(self.iN.values()))
   self.Efi = statistics.mean(list(self.inN.values()))
   self.Ebi = statistics.mean(list(self.intN.values()))
   self.Eei = statistics.mean(list(self.xN.values()))
   self.Esel = statistics.mean(list(self.fN.values()))
+  self.Eselreal = statistics.mean(list(self.fn_real.values()))
 
 def second_degree(self, agent):
   if agent.oneneighbors == []: 

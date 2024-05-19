@@ -145,11 +145,47 @@ def updAttNExp(self):
     elif min(difown,diffore,difback,difexp) == difexp:
       agent.trustExp = min(1,agent.trustExp + agent.trustExp*agent.c)
 
-    # Adjust the trust for the last asked agent based on how their foreground noise deviation compares to zero
+    # Adjust the trust for the last asked agent based on how their foreground noise deviation compares to zero (Increase if agent trusted is an expert)
     if diffore > 0: 
       agent.trust[agent.last_asked] = max(0,agent.trust.get(agent.last_asked,0)-agent.trust.get(agent.last_asked,0)*agent.c)
-    else:   
+    else:  
       agent.trust[agent.last_asked] = min(1,agent.trust.get(agent.last_asked,0)+agent.trust.get(agent.last_asked,0)*agent.c)
+
+# Update attention based on collective approach (update = 'col')
+def updAttNLie(self):
+  for agent in self.schedule.agents:
+    # done = self.allnoiseselection.get(agent.unique_id,0)
+    
+    # Calculate the absolute differences between average expression of the agents, and each noise type.
+    # the trust to the voice that deviates less from the average expression of the agents is increased
+    # and the one that deviates the most is decreased.
+    difown = abs((self.realThoryvos/len(self.activeAgents)) - self.iN.get(agent.unique_id,0))
+    diffore = abs((self.realThoryvos/len(self.activeAgents)) - self.inN.get(agent.unique_id,0))    
+    difback = abs((self.realThoryvos/len(self.activeAgents)) - self.intN.get(agent.unique_id,0))
+    difexp = abs((self.realThoryvos/len(self.activeAgents)) - self.expNoiseUrg)
+
+
+
+    # Identify the noise type that deviates the most and the least from the average expression of the agents
+    if max(difown,diffore,difback,difexp) == difown:
+      agent.selfconfidence = max(0,agent.selfconfidence - agent.selfconfidence*agent.c)
+    elif max(difown,diffore,difback,difexp) == diffore:
+      agent.trustFN = max(0,agent.trustFN-agent.trustFN*agent.c)
+      agent.pwtp = min(1,agent.pwtp-diffore*0.2)
+      self.pwtp[agent.unique_id] = agent.pwtp
+    elif max(difown,diffore,difback,difexp) == difback:
+      agent.trustNoise = max(0,agent.trustNoise - agent.trustNoise*agent.c)
+    elif max(difown,diffore,difback,difexp) == difexp:
+      agent.trustExp = max(0,agent.trustExp - agent.trustExp*agent.c)
+    if min(difown,diffore,difback,difexp) == difown:
+       agent.selfconfidence = min(1,agent.selfconfidence + agent.selfconfidence*agent.c)
+    elif min(difown,diffore,difback,difexp) == diffore:
+      agent.trustFN = min(1,agent.trustFN+agent.trustFN*agent.c)
+    elif min(difown,diffore,difback,difexp) == difback:
+      agent.trustNoise = min(1,agent.trustNoise + agent.trustNoise*agent.c)
+    elif min(difown,diffore,difback,difexp) == difexp:
+      agent.trustExp = min(1,agent.trustExp + agent.trustExp*agent.c)
+    
 
 
 def add_trust(self):

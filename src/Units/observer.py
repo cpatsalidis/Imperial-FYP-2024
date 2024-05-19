@@ -10,6 +10,7 @@ class Observer:
         self.historical_data = []  # Store historical values
         self.learning_rate = 0.02  # Learning rate for adjustments
         self.influence_factor_urgency = 5  # Factor to adjust influence strength
+        self.influence_factor = 0.0001
         self.success_rates = {}  # Success rates of interactions
         
     def gather_additional_info(self):
@@ -32,7 +33,7 @@ class Observer:
 
     def influence_system(self):
         # Influence the regulator
-        self.influence_regulator()
+        #self.influence_regulator()
         # Influence the regulated units
         self.influence_regulated_units()
 
@@ -62,10 +63,12 @@ class Observer:
             #print(self.success_rates)
             # Adjust trust based on community sources and success rates
             for other_agent_id, success_rate in self.success_rates.items():
+                if other_agent_id in self.model.lying_agents:
+                    agent.update_trust({other_agent_id: -(success_rate * self.influence_factor / total_interactions)})
                 if success_rate > upper_limit:  # High success rate
-                    agent.update_trust({other_agent_id: 1.2 })
+                    agent.update_trust({other_agent_id: success_rate * self.influence_factor / total_interactions})
                 elif success_rate < lower_limit:  # Low success rate
-                    agent.update_trust({other_agent_id: 0.8 })
+                    agent.update_trust({other_agent_id: -(success_rate * self.influence_factor / total_interactions) })
 
 
     def learn_from_history(self):
@@ -87,8 +90,8 @@ class Observer:
             self.influence_factor -= self.learning_rate
 
         # Ensure influence_factor remains within a reasonable range
-        self.influence_factor = max(0.1, min(2, self.influence_factor))
-
+        self.influence_factor = max(0.1, min(0.5, self.influence_factor))
+    
     def step(self):
         self.update_historical_data()
         #self.learn_from_history()

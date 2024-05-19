@@ -143,6 +143,12 @@ def find_neighbors(self):
     hopp6_neighbors.remove(self.unique_id)
   return neighbors, hopp6_neighbors
 
+def convert_agents_to_liars(self):
+        num_liars = int(self.n_agents * self.lying_fraction)
+        self.lying_agents = random.choices([agent for agent in self.schedule.agents if agent not in self.expertsIn], k = num_liars)
+        for agent in self.lying_agents:
+            agent.is_lying = True
+
 # initialise collectors for visualisations
 def init_collectors_cloud(self):
   self.datacollector = DataCollector(    
@@ -154,11 +160,11 @@ def init_collectors_cloud(self):
   self.datacollector3= DataCollector(     
     model_reporters={"rounds":"rounds","reward":"reward","NagentsIn":"NagentsIn","thoryvos": "thoryvos"})
   self.datacollector4= DataCollector(    
-    model_reporters={"rounds":"rounds","stdii": "stdii","stdfi": "stdfi","stdbi": "stdbi","stdei": "stdei","stdsel": "stdsel","Eii": "Eii","Efi": "Efi","Ebi": "Ebi","Eei": "Eei","Esel": "Esel"})
+    model_reporters={"rounds":"rounds","stdii": "stdii","stdfi": "stdfi","stdbi": "stdbi","stdei": "stdei","stdsel": "stdsel","Eii": "Eii","Efi": "Efi","Ebi": "Ebi","Eei": "Eei","Esel": "Esel","stdii_real": "stdii_real","Eii_real": "Eii_real"})
   self.datacollector5= DataCollector(    
     model_reporters={"rounds":"rounds","aIV": "aIV","aEV":"aEV","aFN":"aFN","aBN":"aBN"})
   self.datacollector6= DataCollector(    
-    model_reporters={"rounds":"rounds","reward":"reward","NagentsIn": "NagentsIn","thoryvos": "thoryvos","aIV": "aIV","aEV":"aEV","aFN":"aFN","aBN":"aBN","stdii": "stdii","stdfi": "stdfi","stdbi": "stdbi","stdei": "stdei","stdsel": "stdsel","Eii": "Eii","Efi": "Efi","Ebi": "Ebi","Eei": "Eei","Esel": "Esel"})    
+    model_reporters={"rounds":"rounds","reward":"reward","NagentsIn": "NagentsIn","thoryvos": "thoryvos","realThoryvos": "realThoryvos","aIV": "aIV","aEV":"aEV","aFN":"aFN","aBN":"aBN","stdii": "stdii","stdfi": "stdfi","stdbi": "stdbi","stdei": "stdei","stdsel": "stdsel","Eii": "Eii","Efi": "Efi","Ebi": "Ebi","Eei": "Eei","Esel": "Esel","stdii_real": "stdii_real","Eii_real": "Eii_real"})    
   self.datacollector7= DataCollector(    
     model_reporters={"rounds":"rounds","amountasked":"amountasked","commonsources":"commonsources","difsources": "difsources"},
     agent_reporters={"rounds":"myrounds","amasked":"amasked","expert":"expert"}) 
@@ -166,11 +172,15 @@ def init_collectors_cloud(self):
 # initialise variables of model
 def initVarCloud(self):
     self.envFactor = 1
+    self.stdii_real = 0
+    self.stdselreal = 0
     self.stdii = 0 # Standard deviation of individual noise
     self.stdfi = 0 # Standard deviation of foreground noise
     self.stdbi = 0 # Standard deviation of background noise
     self.stdei = 0 # Standard deviation of expert noise
     self.stdsel = 0 # Standard deviation of noise attended to
+    self.Eii_real = 0
+    self.Eselreal = 0
     self.Eii = 0 # Mean ...
     self.Efi = 0 #
     self.Ebi = 0 #
@@ -215,6 +225,7 @@ def initVarCloud(self):
     self.voi = {}
     self.suggestion = {} # suggestion for the next agent to ask
     self.pwtp = {}
+    self.iN_real = {}
     self.iN = {} # Individual noise
     self.xN = {} # Expert noise TOP
     self.iNprev = {}
@@ -224,6 +235,7 @@ def initVarCloud(self):
     self.longiN = {}
     self.intN = {} # Background noise
     self.fN = {} # Noise attended to
+    self.fn_real = {}
     self.fintN = {}
     self.orderJobs = {}
     self.thoryvos = 0 # Total noise
@@ -249,6 +261,7 @@ def initVarCloud(self):
     self.totalAgInQ= dict.fromkeys(range(1,self.n_agents), 0)
     self.avgAgInQ = dict.fromkeys(range(1,self.n_agents), 0)
     self.expertsIn = random.choices(self.activeAgents, k = math.ceil(math.sqrt(self.n_agents))) # Randomly select experts from active agents
+    self.lying_agents = []
     self.expNoise = 0
     self.expNoiseUrg = 0 # Expert noise
     self.aIV = 0 # Number of times the collective payed attention to individual noise
