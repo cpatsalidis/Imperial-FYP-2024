@@ -45,6 +45,7 @@ def reset_mamodel(self):
   self.G = ih.klemm_eguilez_network(self.n_agents,self.m,self.miu) 
   # self.rounds = 0
   procC.init_trust(self) # initialise trust to neighbours, noise and self-confidence
+  procC.initialize_priors(self) # initialise priors
   self.allJobs = {} # dictionary of jobs for each agent
   self.allPrios = {} # dictionary of priorities for each agent
   self.allUrg = {} # dictionary of urgencies for each agent
@@ -127,7 +128,8 @@ def workDynB(state,model,action):
     up.updAttNCom(model)
   else: 
     up.updAttNExp(model)
-
+  procC.update_beliefs(model) 
+  procC.compute_epoch_statistics(model)
   procC.community_sources(model) # Identify top 'n' sources of influence
   procC.attAlignment(model) # Visualise attention
   model.datacollector.collect(model)
@@ -164,7 +166,7 @@ class SoSPole(gym.Env):
     self.log = ''
     self.MAmodel = model
     self.max_steps = max_steps # Set the maximum number of steps the environment can take before resetting
-    self.observer = obs.Observer(model)
+    #self.observer = obs.Observer(model)
 
   def reset(self):
     # Reset the environment to an initial state
@@ -180,7 +182,7 @@ class SoSPole(gym.Env):
     # Step function to move the environment to the next state based on an action
     # Increment the rounds in the model
     self.MAmodel.rounds = self.MAmodel.rounds+1
-    self.observer.step()
+    #self.observer.step()
     self.state = workDynB(self.state,self.MAmodel,action) # Update the state of the environment
     # Compute the reward based on the initial reward parameter
     rewardDyn(self.MAmodel) 

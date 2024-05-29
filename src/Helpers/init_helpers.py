@@ -158,7 +158,7 @@ def init_collectors_cloud(self):
   self.datacollector5= DataCollector(    
     model_reporters={"rounds":"rounds","aIV": "aIV","aEV":"aEV","aFN":"aFN","aBN":"aBN"})
   self.datacollector6= DataCollector(    
-    model_reporters={"rounds":"rounds","reward":"reward","NagentsIn": "NagentsIn","thoryvos": "thoryvos","aIV": "aIV","aEV":"aEV","aFN":"aFN","aBN":"aBN","stdii": "stdii","stdfi": "stdfi","stdbi": "stdbi","stdei": "stdei","stdsel": "stdsel","Eii": "Eii","Efi": "Efi","Ebi": "Ebi","Eei": "Eei","Esel": "Esel"})    
+    model_reporters={"epoch_mean_error":"epoch_mean_error","epoch_std_error":"epoch_std_error","rounds":"rounds","reward":"reward","NagentsIn": "NagentsIn","thoryvos": "thoryvos","aIV": "aIV","aEV":"aEV","aFN":"aFN","aBN":"aBN","stdii": "stdii","stdfi": "stdfi","stdbi": "stdbi","stdei": "stdei","stdsel": "stdsel","Eii": "Eii","Efi": "Efi","Ebi": "Ebi","Eei": "Eei","Esel": "Esel"})    
   self.datacollector7= DataCollector(    
     model_reporters={"rounds":"rounds","amountasked":"amountasked","commonsources":"commonsources","difsources": "difsources"},
     agent_reporters={"rounds":"myrounds","amasked":"amasked","expert":"expert"}) 
@@ -256,6 +256,10 @@ def initVarCloud(self):
     self.aFN = 0 # Number of times the collective payed attention to foreground noise
     self.aBN = 0 # Number of times the collective payed attention to background noise
     self.agent_interactions = {i: {j: 0 for j in range(self.n_agents) if i != j} for i in range(self.n_agents)}
+    self.sqrt_errors = {i: {j: 0 for j in range(self.n_agents) if i != j} for i in range(self.n_agents)}
+    self.noise_variance = 1.0
+    self.epoch_mean_error = 0
+    self.epoch_std_error = 0
 
 
     # Create a scheduler that activates all agents at the same time each step.

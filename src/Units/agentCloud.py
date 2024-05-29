@@ -58,6 +58,11 @@ class Agent(Agent):
     model.amountasked[self.unique_id] = 0
     self.amasked = 0
     self.expert = 0 # Identify if agent is an expert
+    self.priors = {}
+    self.beliefs = {}
+    self.kalman_states = {}
+    self.observed_noises = {}
+
 
   def update_urgency(self, amount):
         self.urgency = max(0, self.jobUrgency + amount)  # Ensure urgency doesn't go negative
