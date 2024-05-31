@@ -102,6 +102,7 @@ def reset_mamodel(self):
 def workDynB(state,model,action):
   model.schedule.step() # Activates the agent and stages any necessary changes, but does not apply them yet
   action_update(action,model)
+  procC.update_beliefs(model) 
   model.iNprev = model.iN # Store the previous individual noise
   procC.initialiseRound(model) # Update active agents, neighbours and trust
   procC.genJobs(model) # Generate jobs, priority and urgency for each agent
@@ -128,7 +129,6 @@ def workDynB(state,model,action):
     up.updAttNCom(model)
   else: 
     up.updAttNExp(model)
-  procC.update_beliefs(model) 
   procC.compute_epoch_statistics(model)
   procC.community_sources(model) # Identify top 'n' sources of influence
   procC.attAlignment(model) # Visualise attention

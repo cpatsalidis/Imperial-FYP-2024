@@ -50,17 +50,17 @@ def update_beliefs(self):
         for other_agent_id, observed_noise in agent.observed_noises.items():
             if agent.unique_id != other_agent_id:
                 
-                previous_belief = agent.beliefs.get(other_agent_id, 0.5)
-                agent.beliefs[other_agent_id] += 0.5 * (observed_noise - previous_belief)
-                # prior_mean, prior_variance = agent.kalman_states.get(other_agent_id, (0.5, 1.0))
+                # previous_belief = agent.beliefs.get(other_agent_id, 0.5)
+                # agent.beliefs[other_agent_id] += 0.5 * (observed_noise - previous_belief)
+                prior_mean, prior_variance = agent.kalman_states.get(other_agent_id, (0.5, 1.0))
 
-                # kalman_gain = prior_variance / (prior_variance + self.noise_variance)
-                # posterior_mean = prior_mean + kalman_gain * (observed_noise - prior_mean)
-                # posterior_variance = (1 - kalman_gain) * prior_variance
+                kalman_gain = prior_variance / (prior_variance + self.noise_variance)
+                posterior_mean = prior_mean + kalman_gain * (observed_noise - prior_mean)
+                posterior_variance = (1 - kalman_gain) * prior_variance
 
-                # # Update agent's beliefs and Kalman filter state
-                # agent.beliefs[other_agent_id] = posterior_mean
-                # agent.kalman_states[other_agent_id] = (posterior_mean, posterior_variance)
+                # Update agent's beliefs and Kalman filter state
+                agent.beliefs[other_agent_id] = posterior_mean
+                agent.kalman_states[other_agent_id] = (posterior_mean, posterior_variance)
 
                 error = (agent.beliefs[other_agent_id] - self.iN.get(other_agent_id, 0)) ** 2
                 self.sqrt_errors[agent.unique_id][other_agent_id] = error
@@ -251,7 +251,7 @@ def netNoise(self):
     # If the agent has no neighbors, randomly select an agent to ask for opinion
     if agent.oneneighbors == []: 
       agentchosen = random.choice(self.activeAgents)
-      self.inN[agent.unique_id] = agent.observed_noises.get(agentchosen,0)
+      self.inN[agent.unique_id] = agent.beliefs.get(agentchosen,0)
       agent.last_asked = agentchosen # Set the last agent asked for opinion to the randomly selected agent
       self.agent_interactions[agent.unique_id][agentchosen] += 1  # Update observer's dictionary
     # If the agent has neighbors, select an agent to ask for opinion based on trust values
@@ -287,7 +287,7 @@ def netNoise(self):
 
               agent.voi = max(0, agent.voi - (abs(agent.pwtp - obs_voi))/2)
               self.voi[agent.unique_id] = agent.voi
-              self.inN[agent.unique_id] = agent.observed_noises.get(key,0)
+              self.inN[agent.unique_id] = agent.beliefs.get(key,0)
               agent.last_asked = key # Set the last agent asked for opinion to the chosen agent
               self.timesasked[key] = self.timesasked.get(key,0) + 1 # Increment the number of times the chosen agent has been asked for opinion
               self.agent_interactions[agent.unique_id][key] += 1  # Update observer's dictionary
@@ -300,7 +300,7 @@ def netNoise(self):
             # Similar conditions as above, checking remaining agents
             if (p > 0.5 and flag == 0):
               if (key in agent.oneneighbors and self.iN.get(key,0)!=0):
-                self.inN[agent.unique_id] = agent.observed_noises.get(key,0)
+                self.inN[agent.unique_id] = agent.beliefs.get(key,0)
                 agent.last_asked = key
                 self.timesasked[key] = self.timesasked.get(key,0) + 1
                 self.agent_interactions[agent.unique_id][key] += 1  # Update observer's dictionary
@@ -313,7 +313,7 @@ def netNoise(self):
             p = random.uniform(0, 1)
             if (p > 0.5):
               if (key in agent.oneneighbors and self.iN.get(key,0)!=0):
-                self.inN[agent.unique_id] = agent.observed_noises.get(key,0)
+                self.inN[agent.unique_id] = agent.beliefs.get(key,0)
                 agent.last_asked = key
                 self.timesasked[key] = self.timesasked.get(key,0) + 1
                 self.agent_interactions[agent.unique_id][key] += 1  # Update observer's dictionary
@@ -328,7 +328,7 @@ def backNoise(self):
     randomsample = random.choices(self.activeAgents,k=math.ceil(len(self.activeAgents)/5)) # Randomly sample a number of agents (5)
     anoise = {} 
     for agent2 in randomsample:
-      anoise[agent2] = agent.observed_noises.get(agent2,0) # Get individual noise of the randomly sampled agents
+      anoise[agent2] = agent.beliefs.get(agent2,0) # Get individual noise of the randomly sampled agents
     avg = sum(anoise.values())/max(1,len(randomsample)) # Calculate the average individual noise of the randomly sampled agents
     agent.intN = avg
     self.intN[agent.unique_id] = agent.intN # Set the agent's background noise to the average individual noise of the randomly sampled agents

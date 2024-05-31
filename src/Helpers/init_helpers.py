@@ -257,7 +257,7 @@ def initVarCloud(self):
     self.aBN = 0 # Number of times the collective payed attention to background noise
     self.agent_interactions = {i: {j: 0 for j in range(self.n_agents) if i != j} for i in range(self.n_agents)}
     self.sqrt_errors = {i: {j: 0 for j in range(self.n_agents) if i != j} for i in range(self.n_agents)}
-    self.noise_variance = 1.0
+    self.noise_variance = 10
     self.epoch_mean_error = 0
     self.epoch_std_error = 0
 
