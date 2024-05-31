@@ -1,3 +1,5 @@
+import statistics
+
 # Update attention based on individual approach (update = 'ind')
 def updAttNInd(self):
   # Iterate through all agents managed by the scheduler
@@ -5,7 +7,8 @@ def updAttNInd(self):
     # done = self.allnoiseselection.get(agent.unique_id,0)
     
     # Calculate the difference between current and previous individual noise 
-    dif = self.iN.get(agent.unique_id,0) - self.iNprev.get(agent.unique_id,0) 
+    dif = self.iN.get(agent.unique_id,0) - self.iNprev.get(agent.unique_id,0)
+
 
     # Determine the type of noise the agent was attending to based on their selection (0 = own, 1 = foreground, 2 = expert, -1 = background)
     # Based on the performance of the noise that the agent attended to during the last round, we update the trust of the agent
@@ -42,8 +45,10 @@ def updAttNInd(self):
     # This part updates the trust based solely on the last interaction in the network context
     if dif > 0: 
       agent.trust[agent.last_asked] = max(0,agent.trust.get(agent.last_asked,0)-agent.trust.get(agent.last_asked,0)*agent.c)
+      agent.trustObs = max(0,agent.trustObs-agent.trustObs*agent.c*(1/statistics.stdev(list(self.iN))))
     elif dif < 0:   
       agent.trust[agent.last_asked] = min(1,agent.trust.get(agent.last_asked,0)+agent.trust.get(agent.last_asked,0)*agent.c)
+      agent.trustObs = min(1,agent.trustObs+agent.trustObs*agent.c/100 *statistics.stdev(list(self.iN)))
 
 # Update attention based on collective approach (update = 'col')
 def updAttNCom(self):
@@ -80,6 +85,45 @@ def updAttNCom(self):
     
     # Adjust the trust for the last asked agent based on how their forward noise deviation compares to the average expression/10
     if diffore > ((self.indThoryvos/len(self.activeAgents))/10): 
+      agent.trust[agent.last_asked] = max(0,agent.trust.get(agent.last_asked,0)-agent.trust.get(agent.last_asked,0)*agent.c)
+    else:   
+      agent.trust[agent.last_asked] = min(1,agent.trust.get(agent.last_asked,0)+agent.trust.get(agent.last_asked,0)*agent.c)
+
+      # Update attention based on collective approach (update = 'col')
+def updAttNFore(self):
+  for agent in self.schedule.agents:
+    # done = self.allnoiseselection.get(agent.unique_id,0)
+    
+    # Calculate the absolute differences between average expression of the agents, and each noise type.
+    # the trust to the voice that deviates less from the average expression of the agents is increased
+    # and the one that deviates the most is decreased.
+    difown = abs((self.netThoryvos/len(self.activeAgents)) - self.iN.get(agent.unique_id,0))
+    diffore = abs((self.netThoryvos/len(self.activeAgents)) - self.inN.get(agent.unique_id,0))    
+    difback = abs((self.netThoryvos/len(self.activeAgents)) - self.intN.get(agent.unique_id,0))
+    difexp = abs((self.netThoryvos/len(self.activeAgents)) - self.expNoiseUrg)
+
+    # Identify the noise type that deviates the most and the least from the average expression of the agents
+    if max(difown,diffore,difback,difexp) == difown:
+      agent.selfconfidence = max(0,agent.selfconfidence - agent.selfconfidence*agent.c)
+    elif max(difown,diffore,difback,difexp) == diffore:
+      agent.trustFN = max(0,agent.trustFN-agent.trustFN*agent.c)
+      agent.pwtp = min(1,agent.pwtp-diffore*0.2)
+      self.pwtp[agent.unique_id] = agent.pwtp
+    elif max(difown,diffore,difback,difexp) == difback:
+      agent.trustNoise = max(0,agent.trustNoise - agent.trustNoise*agent.c)
+    elif max(difown,diffore,difback,difexp) == difexp:
+      agent.trustExp = max(0,agent.trustExp - agent.trustExp*agent.c)
+    if min(difown,diffore,difback,difexp) == difown:
+       agent.selfconfidence = min(1,agent.selfconfidence + agent.selfconfidence*agent.c)
+    elif min(difown,diffore,difback,difexp) == diffore:
+      agent.trustFN = min(1,agent.trustFN+agent.trustFN*agent.c)
+    elif min(difown,diffore,difback,difexp) == difback:
+      agent.trustNoise = min(1,agent.trustNoise + agent.trustNoise*agent.c)
+    elif min(difown,diffore,difback,difexp) == difexp:
+      agent.trustExp = min(1,agent.trustExp + agent.trustExp*agent.c)
+    
+    # Adjust the trust for the last asked agent based on how their forward noise deviation compares to the average expression/10
+    if diffore > ((self.netThoryvos/len(self.activeAgents))/10): 
       agent.trust[agent.last_asked] = max(0,agent.trust.get(agent.last_asked,0)-agent.trust.get(agent.last_asked,0)*agent.c)
     else:   
       agent.trust[agent.last_asked] = min(1,agent.trust.get(agent.last_asked,0)+agent.trust.get(agent.last_asked,0)*agent.c)

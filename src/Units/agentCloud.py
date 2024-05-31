@@ -18,6 +18,7 @@ class Agent(Agent):
     self.trustNoise = 0.5 # Trust in background noise
     self.trustFN = 0.5 # Trust in foreground noise
     self.trustExp =0.5 # Trust in expert noise
+    self.trustObs = 0.5
     self.selfconfidenceit = 0.5 # Trust in individual noise
     self.last_asked = 0 # Last agent asked for their opinion
     self.last_asked_it = 0 # not used
@@ -56,6 +57,9 @@ class Agent(Agent):
     model.allnoiseselection[self.unique_id] = 0 #0 =own, 1=foreground, -1 background
     model.timesasked[self.unique_id] = 0
     model.amountasked[self.unique_id] = 0
+    self.past_selection = {}
+    self.past_selections = []
+    self.propose = 2
     self.amasked = 0
     self.expert = 0 # Identify if agent is an expert
 

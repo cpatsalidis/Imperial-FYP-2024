@@ -184,6 +184,10 @@ def initVarCloud(self):
     self.allJobs = {} # All agent job sizes
     self.allPrios = {} # All agent job priorities
     self.allUrg = {} # All agent job urgencies
+    self.success_rates = {}
+    self.historical_data = []
+    self.past_selection = []
+    self.past_selections = []
     self.allimPat = {}
     self.allDelay = {}
     self.allOrder = {}
@@ -256,7 +260,7 @@ def initVarCloud(self):
     self.aFN = 0 # Number of times the collective payed attention to foreground noise
     self.aBN = 0 # Number of times the collective payed attention to background noise
     self.agent_interactions = {i: {j: 0 for j in range(self.n_agents) if i != j} for i in range(self.n_agents)}
-
+    self.reward_prop = ''
 
     # Create a scheduler that activates all agents at the same time each step.
     self.schedule = SimultaneousActivation(self) 
@@ -264,3 +268,5 @@ def initVarCloud(self):
     for i in range(self.n_agents): 
         a = agentc.Agent(i, self) 
         self.schedule.add(a) # Add the newly created agent to the scheduler
+
+    self.sele = {agent.unique_id: [] for agent in self.schedule.agents} 

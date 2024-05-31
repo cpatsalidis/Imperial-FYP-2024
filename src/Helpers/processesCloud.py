@@ -5,6 +5,8 @@ import src.Helpers.updates as up
 import statistics
 from src.Units.observer import Observer
 import numpy as np
+from collections import Counter
+from sklearn.linear_model import LogisticRegression
 
 # This function initializes a dictionary of trust values for a list of neighboring nodes.
 # Each node is assigned an initial trust value of 0.5.
@@ -286,11 +288,13 @@ def attendNoiseFBIEandR(self):
     back = agent.trustNoise
     own = agent.selfconfidence
     exp = agent.trustExp
-
+    obse = agent.trustObs
+    
     p = random.uniform(0,1)
     # If the probability is greater than 0.3, choose the noise based on maximum trust value
-    if p > 0.3: 
+    if p > 0.3 and obse < 0.7: 
       # Attend to Expert noise
+      self.i = 0
       if max(fore,back,own,exp) == exp:
         self.fN[agent.unique_id] = self.expNoiseUrg
         self.allnoiseselection[agent.unique_id] = 2
@@ -312,7 +316,28 @@ def attendNoiseFBIEandR(self):
         agent.Ns = 0
 
     # If the random number is below or equal to 0.3, randomly attend to a noise
+    elif p > 0.3 and obse >= 0.7:
+      self.i = 1
+      if agent.propose == 2:
+        self.fN[agent.unique_id] = self.expNoiseUrg
+        self.allnoiseselection[agent.unique_id] = 2 
+        agent.Ns = 2
+      elif agent.propose == 1:
+        self.fN[agent.unique_id] = self.inN.get(agent.unique_id,0)
+        self.allnoiseselection[agent.unique_id] = 1
+        agent.Ns = 1
+      # Attend to Background noise
+      elif agent.propose == -1:
+        self.fN[agent.unique_id] = self.intN.get(agent.unique_id,0)
+        self.allnoiseselection[agent.unique_id] = -1
+        agent.Ns = -1
+      # Attend to Individual noise
+      else: 
+        self.fN[agent.unique_id] = self.iN.get(agent.unique_id,0)
+        self.allnoiseselection[agent.unique_id] = 0
+        agent.Ns = 0
     else:
+      self.i = 0
       choose = random.choice(['f','b','i','x'])
       if choose == 'x':
         self.fN[agent.unique_id] = self.expNoiseUrg
@@ -495,4 +520,113 @@ def second_degree(self, agent):
     # Choose a key based on the computed probabilities.
     chosen_key = random.choices(list(probabilities.keys()), weights=probabilities.values(), k=1)[0]
     return chosen_key
+    
+def update_historical_data(self):
+        # Update historical data with current values
+        for agent in self.schedule.agents:
+            if agent.unique_id not in self.sele:
+                self.sele[agent.unique_id] = []
+            self.sele[agent.unique_id].append(self.allnoiseselection.get(agent.unique_id, 0))
+            if len(self.sele[agent.unique_id]) > 10:  # Maintain a maximum of 10 selections
+                self.sele[agent.unique_id].pop(0)
+          
+
+def find_past_selection(self):
+    proposed_values = []
+    # Adjust trust levels based on historical performance and community sources
+    for agent in self.schedule.agents:
+        agent_id = agent.unique_id
+        interactions = self.agent_interactions[agent_id]
+        total_interactions = sum(interactions.values())
+        
+        if total_interactions == 0:
+            continue  # Skip agents with no interactions
+
+        # Calculate the success rate of agents this agent has interacted with
+        self.success_rates = {k: v for k, v in interactions.items() if v > 0}
+
+        if not self.success_rates:
+                continue
+
+        # Calculate the upper and lower percentiles
+        lower_percentile=25
+        upper_percentile=75
+        k = list(self.success_rates.values())
+        lower_limit = np.percentile(k, lower_percentile)
+        upper_limit = np.percentile(k, upper_percentile)
+        # print(self.success_rates)
+        # Adjust trust based on community sources and success rates
+        for other_agent_id, success_rate in self.success_rates.items():
+            if success_rate > upper_limit:  # High success rate
+                agent.past_selection[other_agent_id] = self.allnoiseselection.get(other_agent_id,0)
+                second_degree_interactions = self.agent_interactions.get(other_agent_id, {})
+                most_interacted_agent = max(second_degree_interactions, key=second_degree_interactions.get)
+                agent.past_selection[most_interacted_agent] = self.allnoiseselection.get(most_interacted_agent, 0)
+
+        
+        # if not agent.past_selection:
+        #   proposed_voice = random.choice([0, 1, 2, -1])
+        #   continue
+        # else:
+        #   past_data = self.sele.get(agent_id, [])
+        #   if len(past_data) < 10:
+        #       agent.proposed = random.choice(list(agent.past_selection.values()))
+        #       continue
+          
+          # # Calculate the weighted frequency of each past selection
+          # weighted_freq = Counter()
+          # for idx, value in enumerate(reversed(past_data[-10:])):
+          #     weighted_freq[value] += (10 - idx)  # Higher weight for more recent selections
+
+          # if not weighted_freq:
+          #   agent.propose = random.choice(list(agent.past_selection.values()))
+          #   continue
+          
+          # # Choose the most frequent selection as the prediction
+          # most_common_value, _ = weighted_freq.most_common(1)[0]
+          # proposed_voice = most_common_value
+
+        agent.past_selections = self.sele.get(agent_id, [])
+        if len(agent.past_selections) >= 2 and len(agent.past_selection) >= 2:
+            ca = Counter(list(agent.past_selection.values()))
+            c = Counter(agent.past_selections)
+            mcv, cnt = c.most_common(1)[0]
+            pr, cntw = ca.most_common(1)[0]
+            p = random.uniform(0, 1)
+            if p > 0.2 and pr == mcv:
+              agent.propose = pr
+            elif p > 0.2 and pr != mcv:
+              agent.propose = random.choice([pr, mcv])
+
+            else:     
+              agent.propose = random.choice([0, 1, 2, -1])
+                
+        else:
+              agent.propose = random.choice([0, 1, 2, -1])
+
+    proposed_values = [agent.propose for agent in self.schedule.agents]
+      
+    # Count occurrences of each proposed value
+    value_counts = Counter(proposed_values)
+    
+    # Find the most common proposed value
+    most_proposed_value = value_counts.most_common(1)[0][0]
+    if most_proposed_value == 2:
+      self.reward_prop = 'exp'
+    elif most_proposed_value == 1:
+      self.reward_prop = 'fore'
+    # Attend to Background noise
+    elif most_proposed_value == -1:
+      self.reward_prop = 'com'
+    # Attend to Individual noise
+    else: 
+      self.reward_prop = 'ind'
+
+
+
+       
+
+          
+
+
     
