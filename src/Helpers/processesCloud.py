@@ -217,6 +217,7 @@ def iNSr(self):
     agent.xN = self.expNoiseUrg
     self.iN[agent.unique_id] = agent.iN
     self.xN[agent.unique_id] = self.expNoiseUrg
+    
 
     # NOT USED
     self.longiN[agent.unique_id] = agent.longiN/max(1,self.rounds)

@@ -102,7 +102,6 @@ def reset_mamodel(self):
 def workDynB(state,model,action):
   model.schedule.step() # Activates the agent and stages any necessary changes, but does not apply them yet
   action_update(action,model)
-  procC.update_beliefs(model) 
   model.iNprev = model.iN # Store the previous individual noise
   procC.initialiseRound(model) # Update active agents, neighbours and trust
   procC.genJobs(model) # Generate jobs, priority and urgency for each agent
@@ -110,6 +109,7 @@ def workDynB(state,model,action):
   procC.processJobsOrder(model) # Process the jobs of the selected/not selected agents (Delay, cost)
   state = state_update_dyn(state,model) # Update the state of the environment (Jobs, urgency and selection status of each agent)
   procC.iNSr(model) # Compute individual and expert noise
+  procC.update_beliefs(model) 
   procC.netNoise(model) # Compute foreground noise
   procC.backNoise(model) # Compute background noise
 
