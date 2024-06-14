@@ -22,17 +22,13 @@ class Observer:
     def update_historical_data(self):
         # Update historical data with current values
         current_data = {
-            'job_sizes': [agent.jobSize for agent in self.model.schedule.agents],
-            'urgencies': [agent.jobUrgency for agent in self.model.schedule.agents],
-            'trust_levels': {agent.unique_id: agent.trust.copy() for agent in self.model.schedule.agents}
+            'noise_selection': [self.model.allnoiseselection.get(agent.unique_id,0) for agent in self.model.schedule.agents],
         }
         self.historical_data.append(current_data)
-        if len(self.historical_data) > 100:  # Limit historical data length
+        if len(self.historical_data) > 10:  # Limit historical data length
             self.historical_data.pop(0)
 
     def influence_system(self):
-        # Influence the regulator
-        self.influence_regulator()
         # Influence the regulated units
         self.influence_regulated_units()
 
@@ -43,13 +39,21 @@ class Observer:
         lower_limit = np.percentile(k, lower_percentile)
         upper_limit = np.percentile(k, upper_percentile)
         return lower_limit, upper_limit
+    
+    def find_top(self, other_id):
+        interactions = self.model.agent_interactions[other_id]
+        most_interacted_agent = max(interactions, key=interactions.get)
+        self.past_selection[most_interacted_agent] = self.allnoiseselection.get(most_interacted_agent,0)
 
-    def influence_regulated_units(self):
+    def find_past_selection(self):
         # Adjust trust levels based on historical performance and community sources
         for agent in self.model.schedule.agents:
             agent_id = agent.unique_id
             interactions = self.model.agent_interactions[agent_id]
             total_interactions = sum(interactions.values())
+
+            self.learn_from_history(agent)
+
 
             if total_interactions == 0:
                 continue  # Skip agents with no interactions
@@ -59,35 +63,37 @@ class Observer:
 
             # Calculate the upper and lower percentiles
             lower_limit, upper_limit = self.calculate_percentiles()
-            #print(self.success_rates)
+            # print(self.success_rates)
             # Adjust trust based on community sources and success rates
             for other_agent_id, success_rate in self.success_rates.items():
                 if success_rate > upper_limit:  # High success rate
-                    agent.update_trust({other_agent_id: 1.2 })
-                elif success_rate < lower_limit:  # Low success rate
-                    agent.update_trust({other_agent_id: 0.8 })
+                    self.past_selection[other_agent_id] = self.allnoiseselection.get(other_agent_id,0)
+                    self.find_top(other_agent_id)
+    
 
 
-    def learn_from_history(self):
-        # Implement a simple learning algorithm to adjust influence_factor
-        if len(self.historical_data) < 2:
-            return  # Not enough data to learn from
+    def get_past_selections(self, agent, n=10):
+        #  the past n selections of the agent from historical data
+        agent_id = agent.unique_id
+        past_selections = []
+        for history in reversed(self.historical_data):
+            if agent_id in history['noise_selection']:
+                past_selections.append(history['noise_selection'][agent_id])
+            if len(past_selections) >= n:
+                break
+        return past_selections
 
-        recent_data = self.historical_data[-1]
-        previous_data = self.historical_data[-2]
 
-        # Calculate changes in metrics
-        avg_job_size_change = np.mean(recent_data['job_sizes']) - np.mean(previous_data['job_sizes'])
-        avg_urgency_change = np.mean(recent_data['urgencies']) - np.mean(previous_data['urgencies'])
 
-        # Adjust influence_factor based on observed changes
-        if avg_job_size_change > 0 and avg_urgency_change > 0:
-            self.influence_factor += self.learning_rate
-        else:
-            self.influence_factor -= self.learning_rate
+    def learn_from_history(self, agent):
+        if len(self.historical_data) < 5:
+            return  
+        
+        # Find the past selection of agent
+        past_selections = self.get_past_selections(agent, 10)
+        print(past_selections)
 
-        # Ensure influence_factor remains within a reasonable range
-        self.influence_factor = max(0.1, min(2, self.influence_factor))
+
 
     def step(self):
         self.update_historical_data()

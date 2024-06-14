@@ -110,7 +110,7 @@ def workDynB(state,model,action):
   procC.iNSr(model) # Compute individual and expert noise
   procC.netNoise(model) # Compute foreground noise
   procC.backNoise(model) # Compute background noise
-
+  procC.find_past_selection(model)
   # Select a voice to attend to based on the update parameter
   # if setting is to attend to random noise, choose noise randomly
   if model.update == 'ran': 
@@ -125,9 +125,11 @@ def workDynB(state,model,action):
     up.updAttNInd(model)
   elif model.update == 'com': 
     up.updAttNCom(model)
+  elif model.update == 'fore':
+    up.updAttNFore(model)
   else: 
     up.updAttNExp(model)
-
+  procC.update_historical_data(model) # Update historical data with current values
   procC.community_sources(model) # Identify top 'n' sources of influence
   procC.attAlignment(model) # Visualise attention
   model.datacollector.collect(model)
@@ -141,16 +143,28 @@ def workDynB(state,model,action):
 
 # Reward for regulator based on the initial reward parameter 
 def rewardDyn(model):
-  if model.rewardinp == 'exp':
-    model.reward = -model.expNoiseUrg#/max(1,model.NagentsIn) # Reward based on the expert noise
-  elif model.rewardinp == 'com':
-    model.reward = -model.indThoryvos # Reward based on the total individual noise
-  elif model.rewardinp == 'uni':
-    model.reward = -model.thoryvos # Reward based on the total noise
-  elif model.rewardinp == 'fore':
-    model.reward = -model.netThoryvos # Reward based on the foreground noise
-  else: 
-    model.reward = -statistics.stdev(list(model.iN)) # Reward based on the standard deviation of the individual noise
+  if model.i == 0:
+    if model.rewardinp == 'exp':
+      model.reward = -model.expNoiseUrg#/max(1,model.NagentsIn) # Reward based on the expert noise
+    elif model.rewardinp == 'com':
+      model.reward = -model.indThoryvos # Reward based on the total individual noise
+    elif model.rewardinp == 'uni':
+      model.reward = -model.thoryvos # Reward based on the total noise
+    elif model.rewardinp == 'fore':
+      model.reward = -model.netThoryvos # Reward based on the foreground noise
+    else: 
+      model.reward = -statistics.stdev(list(model.iN)) # Reward based on the standard deviation of the individual noise
+  else:
+    if model.reward_prop == 'exp':
+      model.reward = -model.expNoiseUrg
+    elif model.reward_prop == 'com':
+      model.reward = -model.indThoryvos
+    elif model.reward_prop == 'uni':
+      model.reward = -model.thoryvos
+    elif model.reward_prop == 'fore':
+      model.reward = -model.netThoryvos
+    else: 
+      model.reward = -statistics.stdev(list(model.iN))
 
 #MAIN CLASS OF THE ENVIRONMENT - Custom environment based on gym library
 class SoSPole(gym.Env):
@@ -164,7 +178,7 @@ class SoSPole(gym.Env):
     self.log = ''
     self.MAmodel = model
     self.max_steps = max_steps # Set the maximum number of steps the environment can take before resetting
-    self.observer = obs.Observer(model)
+    #self.observer = obs.Observer(model)
 
   def reset(self):
     # Reset the environment to an initial state
@@ -180,7 +194,7 @@ class SoSPole(gym.Env):
     # Step function to move the environment to the next state based on an action
     # Increment the rounds in the model
     self.MAmodel.rounds = self.MAmodel.rounds+1
-    self.observer.step()
+    #self.observer.step()
     self.state = workDynB(self.state,self.MAmodel,action) # Update the state of the environment
     # Compute the reward based on the initial reward parameter
     rewardDyn(self.MAmodel) 
