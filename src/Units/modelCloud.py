@@ -2,7 +2,7 @@ from mesa import Model
 import src.Helpers.init_helpers as ip
 import  src.Helpers.thoryvos2 as th
 import src.Units.observer as ob
-from stable_baselines3 import DQN
+from stable_baselines3 import A2C
 import random
 
 class Environment(Model):
@@ -32,9 +32,24 @@ class Environment(Model):
     
   def step(self):
     env = th.SoSPole(self) # Create an instance of the SoSPole environment with the current model configuration.
+
+    hyperparameters = {
+    'policy': 'MlpPolicy',
+    'env': env,
+    'learning_rate': 0.00007,  
+    'gamma': 0.95,             
+    'gae_lambda': 0.99,         
+    'ent_coef': 0.01,          
+    'vf_coef': 0.4,            
+    'max_grad_norm': 0.7,     
+    'rms_prop_eps': 1e-6,      
+    'use_rms_prop': True,     
+    'normalize_advantage': True, 
+    'verbose': 0
+}
     observation = env.reset() # Reset the environment to its initial state and get the initial observation.
     # Initialize a DQN model.
-    modeldqn = DQN("MlpPolicy", env, verbose=0, exploration_fraction=0.1, exploration_final_eps=0.1, exploration_initial_eps=1.0, learning_starts=1000)
+    modeldqn = A2C("MlpPolicy", env, verbose=0)
     modeldqn.learn(total_timesteps=self.totallearn) # Start the learning process over the specified number of total timesteps.
     observation = env.reset() # Reset the environment again to start a new series of steps or episodes.
       # observation, reward, done, info = env.step(action)
